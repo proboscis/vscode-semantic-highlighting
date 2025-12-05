@@ -1,31 +1,30 @@
 # VS Code Python Semantic Highlighting
 
-IntelliJ-style semantic highlighting for Python in VS Code.
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/proboscis.python-semantic-highlighter)](https://marketplace.visualstudio.com/items?itemName=proboscis.python-semantic-highlighter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## Overview
+IntelliJ-style semantic highlighting for Python in VS Code. Each symbol gets a unique color based on its name, making it easy to track variables and understand code at a glance.
 
-This VS Code extension provides semantic highlighting for Python code, where each symbol (variable, function, class, etc.) is colored based on its name. This makes it easy to visually track variables and identify patterns in your code.
-
-**For user documentation, see [extension/README.md](extension/README.md)**
+**👉 For user documentation, see [extension/README.md](extension/README.md)**
 
 ## Project Structure
 
 ```
 vscode-semantic-highlighting/
-├── extension/                    # VS Code extension (TypeScript)
+├── extension/                    # VS Code Extension (TypeScript)
 │   ├── src/
-│   │   ├── extension.ts          # Main extension entry point
+│   │   ├── extension.ts          # Main entry point
 │   │   ├── highlighter.ts        # Rust binary invocation
-│   │   ├── colors.ts             # Color generation logic
+│   │   ├── colors.ts             # Color generation (Van der Corput)
 │   │   └── settingsPanel.ts      # WebView settings UI
-│   ├── bin/                      # Pre-built Rust binary (gitignored)
+│   ├── bin/                      # Pre-built Rust binary
 │   ├── package.json              # Extension manifest
 │   └── README.md                 # User documentation
 │
-├── rust-highlighter/             # Rust AST parser
+├── rust-highlighter/             # Rust AST Parser
 │   ├── src/
 │   │   └── main.rs               # Symbol extraction from Python AST
-│   └── Cargo.toml
+│   └── Cargo.toml                # Rust dependencies
 │
 └── README.md                     # This file (developer docs)
 ```
@@ -35,8 +34,8 @@ vscode-semantic-highlighting/
 ### Prerequisites
 
 - Node.js 18+
-- Rust toolchain (rustup)
-- VS Code
+- Rust toolchain (`rustup`)
+- VS Code 1.85+
 
 ### Building
 
@@ -48,13 +47,13 @@ cd vscode-semantic-highlighting
 # Build Rust highlighter
 cd rust-highlighter
 cargo build --release
-cd ..
 
 # Copy binary to extension
-cp rust-highlighter/target/release/python-semantic-highlighter extension/bin/
+mkdir -p ../extension/bin
+cp target/release/python-semantic-highlighter ../extension/bin/
 
 # Install extension dependencies
-cd extension
+cd ../extension
 npm install
 
 # Build TypeScript
@@ -66,6 +65,16 @@ npm run build
 1. Open the project in VS Code
 2. Press `F5` to launch Extension Development Host
 3. Open a Python file in the new window
+
+### Testing Rust Parser
+
+```bash
+cd rust-highlighter
+cargo test
+
+# Manual testing
+echo 'def hello(x): return x + 1' | ./target/release/python-semantic-highlighter /dev/stdin
+```
 
 ### Packaging
 
@@ -79,13 +88,12 @@ npm run package
 
 ### Rust Highlighter
 
-The Rust component (`rust-highlighter/`) parses Python source code using `rustpython-parser` and extracts:
+Parses Python using `rustpython-parser` and extracts:
+- Symbol names and positions (line, column, length)
+- Symbol types (variable, function, class, parameter, attribute, keyword, decorator, type_annotation, kwarg_name)
+- Handles Jupyter/IPython magic commands
 
-- Symbol names and their positions
-- Symbol types (variable, function, class, parameter, etc.)
-- Keyword positions
-
-Output is JSON:
+Output format:
 ```json
 {
   "symbols": [
@@ -93,53 +101,63 @@ Output is JSON:
       "name": "my_variable",
       "kind": "variable",
       "occurrences": [
-        {"line": 0, "column": 0, "length": 11},
-        {"line": 5, "column": 4, "length": 11}
+        {"line": 0, "column": 0, "length": 11}
       ]
     }
   ]
 }
 ```
 
-### VS Code Extension
-
-The TypeScript extension (`extension/`):
-
-1. Invokes the Rust binary as a subprocess
-2. Parses the JSON output
-3. Generates colors based on symbol name hash and user configuration
-4. Applies VS Code TextEditor decorations
-
 ### Color Generation
 
-Colors are generated using HSL color space:
-- **Hue**: Derived from symbol name hash
-- **Saturation/Lightness**: Configurable per category
+Uses **Van der Corput sequence** for maximum color separation:
+1. Each new symbol gets an index
+2. Index is converted to a value between 0-1 using binary subdivision
+3. Value is mapped to the configured hue range
+4. Results in maximally distant colors for sequential symbols
 
-This ensures:
-- Same symbol name → same color (within a file)
-- Different names → visually distinct colors
-- Consistent palette across sessions
+### VS Code Integration
 
-## Testing
+- Invokes Rust binary as subprocess
+- Parses JSON output
+- Creates `TextEditorDecorationType` for each unique color
+- Applies decorations to all visible editors
+- Handles configuration changes, file saves, and editor switches
+
+## Publishing
+
+### Prerequisites
+
+1. [Create a Personal Access Token](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#get-a-personal-access-token) on Azure DevOps
+2. Install vsce: `npm install -g @vscode/vsce`
+
+### Publish Steps
 
 ```bash
-# Rust tests
-cd rust-highlighter
-cargo test
+cd extension
 
-# Manual testing
-./target/release/python-semantic-highlighter path/to/file.py
+# Login (first time only)
+vsce login proboscis
+
+# Publish
+vsce publish
+
+# Or publish with version bump
+vsce publish patch  # 0.10.0 -> 0.10.1
+vsce publish minor  # 0.10.0 -> 0.11.0
+vsce publish major  # 0.10.0 -> 1.0.0
 ```
 
 ## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
-4. Run tests
-5. Submit a pull request
+4. Run tests (`cargo test` in rust-highlighter)
+5. Commit (`git commit -m 'Add amazing feature'`)
+6. Push (`git push origin feature/amazing-feature`)
+7. Open a Pull Request
 
 ## License
 
-MIT
+MIT License - see [LICENSE](extension/LICENSE) for details.

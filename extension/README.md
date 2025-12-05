@@ -2,87 +2,88 @@
 
 **IntelliJ-style semantic highlighting for Python in VS Code**
 
-Each symbol (variable, function, class, etc.) gets a unique color based on its name, making it easy to track variables throughout your code.
+Give each symbol a unique color based on its name — making it easy to track variables, spot patterns, and understand code flow at a glance.
 
-## Features
+![Demo](https://raw.githubusercontent.com/proboscis/vscode-semantic-highlighting/main/demo.png)
+
+## ✨ Features
 
 ### 🎨 Symbol-based Coloring
+Every symbol gets a **consistent, unique color** based on its name:
 - Same symbol = same color throughout the file
-- Different symbols = different colors
-- Colors are computed from symbol name hash for consistency
+- Different symbols = visually distinct colors
+- Colors persist across editing sessions
 
 ### 📁 Semantic Categories
-Configurable coloring for different symbol types:
-- **Local Variables** - Variables defined in local scope
-- **Global Variables** - Module-level variables
-- **Parameters** - Function/method parameters (consistent in definition and body)
-- **Functions** - Function definitions and calls
-- **Classes** - Class definitions and references
-- **Attributes** - Object attributes (e.g., `self.name`)
-- **Decorators** - Function/class decorators
-- **Type Annotations** - Type hints
-- **Builtins** - Python built-in functions
-- **self/cls** - Special parameter names
+Fine-tuned coloring for different Python constructs:
+
+| Category | Description |
+|----------|-------------|
+| **Local Variables** | Variables in local scope |
+| **Global Variables** | Module-level variables |
+| **Parameters** | Function/method parameters (consistent in definition & body) |
+| **Functions** | Function definitions and calls |
+| **Classes** | Class definitions and references |
+| **Attributes** | Object attributes (`self.name`, `obj.attr`) |
+| **Decorators** | `@decorator` expressions |
+| **Type Annotations** | Type hints (`def foo(x: int) -> str`) |
+| **Kwargs** | Keyword argument names (`func(name="value")`) |
+| **Builtins** | Python built-in functions |
+| **self/cls** | Special parameter names |
+
+### 🎯 Smart Color Distribution
+Uses the **Van der Corput sequence** for maximum color separation:
+- Adjacent variables get maximally different colors
+- No more similar-looking variables!
+- Colors distributed evenly across your chosen hue range
 
 ### ⌨️ Keyword Colors
-Fixed colors for Python keywords:
-- Control flow: `if`, `elif`, `else`, `for`, `while`, `break`, `continue`
-- Functions: `def`, `return`, `yield`, `lambda`
-- Classes: `class`
-- Async: `async`, `await`
-- Exception handling: `try`, `except`, `finally`, `raise`
-- Imports: `import`, `from`, `as`
-- And more...
+Fixed colors for Python keywords with full customization:
+- `def`, `class`, `return`, `yield`, `await`, `async`
+- `if`, `elif`, `else`, `for`, `while`, `break`, `continue`
+- `try`, `except`, `finally`, `raise`
+- `import`, `from`, `as`, `with`, `lambda`
+- Leave empty to use your theme's default colors
+
+### 🔧 Visual Settings Panel
+Beautiful settings UI with:
+- **Circular Hue Picker** — Intuitive color wheel for selecting hue ranges
+- **HSV Sliders** — Fine-tune saturation and lightness
+- **Live Preview** — See color gradients as you adjust
+- **Per-category Toggles** — Enable/disable each category
+
+### 📓 Jupyter Notebook Support
+Works seamlessly with `.ipynb` files:
+- Highlights code in notebook cells
+- Handles IPython magic commands (`%matplotlib`, `%%time`)
+- Works with shell commands (`!pip install`)
 
 ### ⚡ Fast Rust-based Parser
 - Native Rust binary using `rustpython-parser`
 - Sub-millisecond parsing for most files
 - Debounced updates for smooth editing
+- Works in Peek Definition and split editors
 
-### 🔧 Jupyter/IPython Support
-Works with files containing:
-- Cell markers (`# %%`)
-- Cell magic (`%%time`, `%%bash`)
-- Line magic (`%matplotlib`, `%load_ext`)
-- Shell commands (`!pip install`)
+## 📦 Installation
 
-## Installation
+### From VS Code Marketplace
+1. Open VS Code
+2. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+3. Search for "Python Semantic Highlighter"
+4. Click Install
 
 ### From VSIX
-1. Download the `.vsix` file
+1. Download the `.vsix` file from [Releases](https://github.com/proboscis/vscode-semantic-highlighting/releases)
 2. In VS Code: `Cmd+Shift+P` → `Extensions: Install from VSIX...`
 3. Select the downloaded file
 
-### From Source
-```bash
-# Clone the repository
-git clone https://github.com/proboscis/vscode-semantic-highlighting.git
-cd vscode-semantic-highlighting
+## ⚙️ Configuration
 
-# Build Rust highlighter
-cd rust-highlighter
-cargo build --release
-cd ..
-
-# Install extension dependencies
-cd extension
-npm install
-
-# Build TypeScript
-npm run build
-
-# Package extension
-npm run package
-```
-
-## Configuration
-
-### Visual Settings Panel
-The easiest way to configure the extension:
-
-1. **Command Palette**: `Cmd+Shift+P` → `Python Semantic Highlighter: Open Settings Panel`
-2. **Extension Page**: Click gear icon ⚙️ → `Open Settings Panel`
-3. **VS Code Settings**: Search `pythonSemanticHighlighter` → Click `Open Visual Settings Panel` link
+### Open Settings Panel
+The easiest way to configure:
+- **Command Palette**: `Cmd+Shift+P` → `Python Semantic Highlighter: Open Settings Panel`
+- **Extension Page**: Click gear icon ⚙️ → `Open Settings Panel`
+- **VS Code Settings**: Search `pythonSemanticHighlighter` → Click link
 
 ### Settings Overview
 
@@ -91,19 +92,14 @@ The easiest way to configure the extension:
 | `enable` | Enable/disable highlighting | `true` |
 | `debounceMs` | Delay before re-highlighting (ms) | `150` |
 | `semanticCategories` | HSV ranges for each category | See below |
-| `keywordColors` | Fixed colors for keywords | Empty (theme default) |
+| `keywordColors` | Fixed colors for keywords | `{}` (theme default) |
 
-### Semantic Categories Configuration
+### Example Configuration
 
-Each category can be configured with:
-- **enabled** - Toggle this category on/off
-- **hueRange** - `[min, max]` hue range (0-360°)
-- **saturation** - `[min, max]` saturation range (0-100%)
-- **lightness** - `[min, max]` lightness range (0-100%)
-
-Example in `settings.json`:
 ```json
 {
+  "pythonSemanticHighlighter.enable": true,
+  "pythonSemanticHighlighter.debounceMs": 150,
   "pythonSemanticHighlighter.semanticCategories": {
     "localVariable": {
       "enabled": true,
@@ -116,83 +112,82 @@ Example in `settings.json`:
       "hueRange": [90, 150],
       "saturation": [45, 65],
       "lightness": [55, 70]
-    },
-    "typeAnnotation": {
-      "enabled": false
     }
-  }
-}
-```
-
-### Keyword Colors Configuration
-
-Set custom colors for specific keywords, or leave empty to use theme defaults:
-
-```json
-{
+  },
   "pythonSemanticHighlighter.keywordColors": {
     "def": "#CC7832",
     "class": "#CC7832",
-    "return": "#CC7832",
-    "yield": "#B58900",
-    "await": "#859900"
+    "return": "#CC7832"
   }
 }
 ```
 
-## Commands
+## 🎮 Commands
 
 | Command | Description |
 |---------|-------------|
 | `Python Semantic Highlighter: Open Settings Panel` | Open visual configuration UI |
-| `Python Semantic Highlighter: Refresh Semantic Highlighting` | Force re-highlight current file |
-| `Python Semantic Highlighter: Toggle Semantic Highlighting` | Enable/disable highlighting |
+| `Python Semantic Highlighter: Refresh` | Force re-highlight current file |
+| `Python Semantic Highlighter: Toggle` | Enable/disable highlighting |
 
-## How It Works
+## 🏗️ How It Works
 
 ```
 ┌─────────────────────────────────────────┐
-│           Python File                    │
+│           Python Source Code            │
 └─────────────────┬───────────────────────┘
                   │
                   ▼
 ┌─────────────────────────────────────────┐
 │      Rust Parser (rustpython-parser)    │
-│  - Parses Python AST                    │
-│  - Extracts symbols with positions      │
-│  - Handles Jupyter magic commands       │
+│  • Parses Python AST                    │
+│  • Extracts symbols with positions      │
+│  • Identifies semantic categories       │
+│  • Handles Jupyter magic commands       │
 └─────────────────┬───────────────────────┘
                   │ JSON
                   ▼
 ┌─────────────────────────────────────────┐
 │         VS Code Extension               │
-│  - Receives symbol information          │
-│  - Computes colors from name hash       │
-│  - Applies TextEditor decorations       │
+│  • Receives symbol information          │
+│  • Applies Van der Corput distribution  │
+│  • Generates HSL colors per category    │
+│  • Applies TextEditor decorations       │
 └─────────────────────────────────────────┘
 ```
 
-## Requirements
+## 🔧 Requirements
 
 - VS Code 1.85.0 or later
-- macOS, Linux, or Windows (binary must be built for your platform)
+- macOS (Apple Silicon & Intel), Linux, or Windows
 
-## Known Limitations
+## ❓ FAQ
 
-- Colors are file-scoped (same variable name in different files may have different colors)
-- Requires file to be saved on disk for analysis
-- Large files (>10K lines) may have slight delay
+**Q: Colors aren't showing up?**
+A: Make sure the extension is enabled in settings. Try `Cmd+Shift+P` → `Python Semantic Highlighter: Refresh`.
 
-## Contributing
+**Q: How do I use theme default colors for keywords?**
+A: Leave the keyword color empty (don't set any value). The extension will fall back to your theme's colors.
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+**Q: Colors are too similar?**
+A: The Van der Corput sequence ensures maximum separation. Try adjusting the hue range in settings to use a wider range.
 
-## License
+**Q: Does it work with virtual environments?**
+A: Yes! The extension analyzes the source code directly, no Python interpreter needed.
 
-MIT
+## 🤝 Contributing
 
-## Acknowledgments
+Contributions welcome! Please see [CONTRIBUTING.md](https://github.com/proboscis/vscode-semantic-highlighting/blob/main/CONTRIBUTING.md) for guidelines.
 
-- [rustpython-parser](https://github.com/RustPython/RustPython) - Python parser in Rust
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🙏 Acknowledgments
+
+- [rustpython-parser](https://github.com/RustPython/RustPython) — Python parser in Rust
 - Inspired by IntelliJ IDEA's semantic highlighting feature
 
+---
+
+**Enjoy coding with colors!** 🌈

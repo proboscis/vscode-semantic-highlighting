@@ -1,14 +1,35 @@
 {
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
-  "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.10.0",
+  "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
+  "version": "1.0.0",
   "publisher": "proboscis",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/proboscis/vscode-semantic-highlighting"
+  },
+  "homepage": "https://github.com/proboscis/vscode-semantic-highlighting#readme",
+  "bugs": {
+    "url": "https://github.com/proboscis/vscode-semantic-highlighting/issues"
+  },
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Programming Languages"
+    "Programming Languages",
+    "Themes",
+    "Other"
+  ],
+  "keywords": [
+    "python",
+    "semantic",
+    "highlighting",
+    "syntax",
+    "color",
+    "intellij",
+    "rainbow",
+    "variables"
   ],
   "activationEvents": [
     "onLanguage:python",
