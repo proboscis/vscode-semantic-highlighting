@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "your-name",
   "engines": {
     "vscode": "^1.85.0"
