@@ -87,6 +87,8 @@ struct SymbolCollector<'a> {
     source: &'a str,
     lines: &'a LineIndex,
     symbols: HashMap<SymbolKey, Vec<Occurrence>>,
+    /// Stack of parameter names in current scope (for tracking function parameters)
+    param_scopes: Vec<std::collections::HashSet<String>>,
 }
 
 impl<'a> SymbolCollector<'a> {
@@ -95,7 +97,31 @@ impl<'a> SymbolCollector<'a> {
             source,
             lines,
             symbols: HashMap::new(),
+            param_scopes: Vec::new(),
         }
+    }
+
+    fn push_param_scope(&mut self) {
+        self.param_scopes.push(std::collections::HashSet::new());
+    }
+
+    fn pop_param_scope(&mut self) {
+        self.param_scopes.pop();
+    }
+
+    fn add_param_to_scope(&mut self, name: &str) {
+        if let Some(scope) = self.param_scopes.last_mut() {
+            scope.insert(name.to_string());
+        }
+    }
+
+    fn is_parameter(&self, name: &str) -> bool {
+        for scope in self.param_scopes.iter().rev() {
+            if scope.contains(name) {
+                return true;
+            }
+        }
+        false
     }
 
     fn visit_suite(&mut self, suite: &[ast::Stmt]) {
@@ -112,7 +138,12 @@ impl<'a> SymbolCollector<'a> {
                 }
                 let mut cursor = self.record_keyword("def", func.range, None);
                 cursor = self.record_identifier_search(&func.name, SymbolKind::Function, func.range, cursor);
+                
+                // Push new scope and collect parameter names
+                self.push_param_scope();
+                self.collect_param_names(&func.args);
                 self.visit_arguments(&func.args);
+                
                 if let Some(returns) = &func.returns {
                     self.visit_type_annotation(returns);
                 }
@@ -122,6 +153,7 @@ impl<'a> SymbolCollector<'a> {
                 for inner in &func.body {
                     self.visit_stmt(inner);
                 }
+                self.pop_param_scope();
             }
             ast::Stmt::AsyncFunctionDef(func) => {
                 for decorator in &func.decorator_list {
@@ -130,7 +162,12 @@ impl<'a> SymbolCollector<'a> {
                 let mut cursor = self.record_keyword("async", func.range, None);
                 cursor = self.record_keyword("def", func.range, cursor);
                 cursor = self.record_identifier_search(&func.name, SymbolKind::Function, func.range, cursor);
+                
+                // Push new scope and collect parameter names
+                self.push_param_scope();
+                self.collect_param_names(&func.args);
                 self.visit_arguments(&func.args);
+                
                 if let Some(returns) = &func.returns {
                     self.visit_type_annotation(returns);
                 }
@@ -140,6 +177,7 @@ impl<'a> SymbolCollector<'a> {
                 for inner in &func.body {
                     self.visit_stmt(inner);
                 }
+                self.pop_param_scope();
             }
             ast::Stmt::ClassDef(class_def) => {
                 for decorator in &class_def.decorator_list {
@@ -441,7 +479,13 @@ impl<'a> SymbolCollector<'a> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr {
             ast::Expr::Name(name) => {
-                self.record_identifier_at_range(&name.id, SymbolKind::Variable, name.range);
+                // Check if this name is a parameter in the current scope
+                let kind = if self.is_parameter(name.id.as_ref()) {
+                    SymbolKind::Parameter
+                } else {
+                    SymbolKind::Variable
+                };
+                self.record_identifier_at_range(&name.id, kind, name.range);
             }
             ast::Expr::Attribute(attr) => {
                 self.visit_expr(&attr.value);
@@ -470,8 +514,11 @@ impl<'a> SymbolCollector<'a> {
             }
             ast::Expr::Lambda(lambda) => {
                 self.record_keyword("lambda", lambda.range, None);
+                self.push_param_scope();
+                self.collect_param_names(&lambda.args);
                 self.visit_arguments(&lambda.args);
                 self.visit_expr(&lambda.body);
+                self.pop_param_scope();
             }
             ast::Expr::IfExp(if_exp) => {
                 self.visit_expr(&if_exp.test);
@@ -598,6 +645,24 @@ impl<'a> SymbolCollector<'a> {
         self.visit_expr(&comp.iter);
         for if_expr in &comp.ifs {
             self.visit_expr(if_expr);
+        }
+    }
+
+    fn collect_param_names(&mut self, args: &ast::Arguments) {
+        for arg in &args.posonlyargs {
+            self.add_param_to_scope(arg.def.arg.as_ref());
+        }
+        for arg in &args.args {
+            self.add_param_to_scope(arg.def.arg.as_ref());
+        }
+        if let Some(vararg) = &args.vararg {
+            self.add_param_to_scope(vararg.arg.as_ref());
+        }
+        for arg in &args.kwonlyargs {
+            self.add_param_to_scope(arg.def.arg.as_ref());
+        }
+        if let Some(kwarg) = &args.kwarg {
+            self.add_param_to_scope(kwarg.arg.as_ref());
         }
     }
 
