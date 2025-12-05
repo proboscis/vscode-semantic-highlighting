@@ -272,11 +272,22 @@ export function activate(context: vscode.ExtensionContext) {
       if (event.affectsConfiguration('pythonSemanticHighlighter')) {
         outputChannel.appendLine('Configuration changed, refreshing decorations...');
         
-        // Clear ALL caches to force recreation with new colors
+        // First, clear all decorations from editors BEFORE disposing decoration types
+        for (const editor of vscode.window.visibleTextEditors) {
+          if (editor.document.languageId === 'python') {
+            const documentKey = editor.document.uri.toString();
+            const prevDecorations = pendingDecorations.get(documentKey);
+            if (prevDecorations) {
+              for (const entry of prevDecorations) {
+                editor.setDecorations(entry.decorationType, []);
+              }
+            }
+          }
+        }
+        
+        // Now safe to clear caches
         clearDecorationCache(decorationCache);
         analysisCache.clear();
-        
-        // Clear pending decorations map
         pendingDecorations.clear();
         
         // Re-highlight all visible Python editors
