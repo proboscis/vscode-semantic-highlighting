@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "proboscis",
   "engines": {
     "vscode": "^1.85.0"
@@ -162,47 +162,11 @@
         },
         "pythonSemanticHighlighter.keywordColors": {
           "type": "object",
-          "description": "Fixed colors for specific Python keywords.",
-          "default": {
-            "def": "#CC7832",
-            "class": "#CC7832",
-            "return": "#CC7832",
-            "yield": "#CC7832",
-            "await": "#CC7832",
-            "async": "#CC7832",
-            "if": "#CC7832",
-            "elif": "#CC7832",
-            "else": "#CC7832",
-            "for": "#CC7832",
-            "while": "#CC7832",
-            "break": "#CC7832",
-            "continue": "#CC7832",
-            "try": "#CC7832",
-            "except": "#CC7832",
-            "finally": "#CC7832",
-            "raise": "#CC7832",
-            "with": "#CC7832",
-            "as": "#CC7832",
-            "import": "#CC7832",
-            "from": "#CC7832",
-            "pass": "#CC7832",
-            "lambda": "#CC7832",
-            "global": "#CC7832",
-            "nonlocal": "#CC7832",
-            "assert": "#CC7832",
-            "del": "#CC7832",
-            "in": "#CC7832",
-            "is": "#CC7832",
-            "not": "#CC7832",
-            "and": "#CC7832",
-            "or": "#CC7832",
-            "match": "#CC7832",
-            "case": "#CC7832",
-            "type": "#CC7832"
-          },
+          "description": "Fixed colors for specific Python keywords. Empty string means use IDE theme default.",
+          "default": {},
           "additionalProperties": {
             "type": "string",
-            "description": "Hex color value for this keyword"
+            "description": "Hex color value for this keyword (empty = use theme default)"
           }
         }
       }

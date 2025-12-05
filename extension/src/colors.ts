@@ -171,7 +171,12 @@ export function getColorForSymbol(name: string, kind: string): string | null {
   // Handle keywords with fixed colors
   if (category === 'keyword') {
     const keywordColors = getKeywordColors();
-    return keywordColors[name] || '#CC7832'; // Default keyword color
+    const color = keywordColors[name];
+    // If no color set or empty string, return null to use IDE theme
+    if (!color || color === '') {
+      return null;
+    }
+    return color;
   }
   
   // Handle semantic categories

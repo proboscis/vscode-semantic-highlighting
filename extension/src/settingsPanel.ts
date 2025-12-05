@@ -43,6 +43,9 @@ export class SettingsPanel {
           case 'updateKeywordColor':
             await this._updateKeywordColor(message.keyword, message.color);
             break;
+          case 'clearKeywordColor':
+            await this._clearKeywordColor(message.keyword);
+            break;
           case 'getSettings':
             this._sendCurrentSettings();
             break;
@@ -74,6 +77,13 @@ export class SettingsPanel {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
     const colors = vsConfig.get<Record<string, string>>('keywordColors', {});
     colors[keyword] = color;
+    await vsConfig.update('keywordColors', colors, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _clearKeywordColor(keyword: string) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    const colors = vsConfig.get<Record<string, string>>('keywordColors', {});
+    delete colors[keyword];
     await vsConfig.update('keywordColors', colors, vscode.ConfigurationTarget.Global);
   }
 
@@ -121,14 +131,13 @@ export class SettingsPanel {
       --text-muted: #888888;
       --accent-color: #0e639c;
       --accent-hover: #1177bb;
+      --danger-color: #f14c4c;
     }
     
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: var(--bg-color);
       color: var(--text-color);
       padding: 20px;
@@ -136,76 +145,49 @@ export class SettingsPanel {
       line-height: 1.5;
     }
     
-    h1 {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: #ffffff;
-    }
-    
-    h2 {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 24px 0 16px 0;
-      color: #ffffff;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 8px;
-    }
-    
-    .subtitle {
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; color: #fff; }
+    h2 { font-size: 18px; font-weight: 600; margin: 32px 0 16px 0; color: #fff; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }
+    .subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 14px; }
     
     .category-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 16px;
-      margin-bottom: 12px;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
     }
     
     .category-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     
-    .category-name {
-      font-weight: 600;
-      font-size: 14px;
-    }
+    .category-name { font-weight: 600; font-size: 15px; }
     
     .toggle-switch {
       position: relative;
-      width: 40px;
-      height: 20px;
+      width: 44px;
+      height: 24px;
     }
     
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
     
     .toggle-slider {
       position: absolute;
       cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      top: 0; left: 0; right: 0; bottom: 0;
       background-color: #555;
       transition: .3s;
-      border-radius: 20px;
+      border-radius: 24px;
     }
     
     .toggle-slider:before {
       position: absolute;
       content: "";
-      height: 14px;
-      width: 14px;
+      height: 18px;
+      width: 18px;
       left: 3px;
       bottom: 3px;
       background-color: white;
@@ -213,84 +195,111 @@ export class SettingsPanel {
       border-radius: 50%;
     }
     
-    input:checked + .toggle-slider {
-      background-color: var(--accent-color);
-    }
+    input:checked + .toggle-slider { background-color: var(--accent-color); }
+    input:checked + .toggle-slider:before { transform: translateX(20px); }
     
-    input:checked + .toggle-slider:before {
-      transform: translateX(20px);
-    }
-    
-    .slider-group {
+    .slider-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 60px;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 12px;
     }
     
-    .slider-label {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-bottom: 4px;
+    .slider-label { font-size: 13px; color: var(--text-muted); }
+    
+    .range-slider {
+      position: relative;
+      height: 24px;
     }
     
-    .dual-slider {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    
-    .dual-slider input[type="range"] {
-      flex: 1;
-      height: 4px;
+    .range-slider input[type="range"] {
+      position: absolute;
+      width: 100%;
+      height: 6px;
+      top: 9px;
       -webkit-appearance: none;
-      background: var(--border-color);
-      border-radius: 2px;
-      outline: none;
+      background: transparent;
+      pointer-events: none;
     }
     
-    .dual-slider input[type="range"]::-webkit-slider-thumb {
+    .range-slider input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
+      width: 16px;
+      height: 16px;
       background: var(--accent-color);
       border-radius: 50%;
       cursor: pointer;
+      pointer-events: auto;
+      border: 2px solid #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
     }
     
-    .dual-slider span {
-      font-size: 11px;
+    .range-track {
+      position: absolute;
+      width: 100%;
+      height: 6px;
+      top: 9px;
+      background: var(--border-color);
+      border-radius: 3px;
+    }
+    
+    .range-track-fill {
+      position: absolute;
+      height: 6px;
+      top: 9px;
+      background: var(--accent-color);
+      border-radius: 3px;
+      opacity: 0.5;
+    }
+    
+    .slider-value {
+      font-size: 12px;
       color: var(--text-muted);
-      min-width: 30px;
-      text-align: center;
+      text-align: right;
+      font-family: 'SF Mono', Monaco, monospace;
     }
     
     .color-preview {
-      width: 100%;
-      height: 24px;
-      border-radius: 4px;
-      margin-top: 8px;
+      height: 32px;
+      border-radius: 6px;
+      margin-top: 12px;
       border: 1px solid var(--border-color);
     }
     
+    .disabled .slider-row { opacity: 0.35; pointer-events: none; }
+    .disabled .color-preview { opacity: 0.35; }
+    
+    /* Keyword colors */
+    .keyword-section { margin-top: 16px; }
+    
     .keyword-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
     }
     
     .keyword-item {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       background: var(--card-bg);
       border: 1px solid var(--border-color);
-      border-radius: 4px;
-      padding: 8px 12px;
+      border-radius: 6px;
+      padding: 10px 12px;
     }
     
-    .keyword-item input[type="color"] {
-      width: 24px;
-      height: 24px;
+    .keyword-item.has-color { border-color: var(--accent-color); }
+    
+    .color-picker-wrapper {
+      position: relative;
+      width: 28px;
+      height: 28px;
+    }
+    
+    .color-picker-wrapper input[type="color"] {
+      width: 28px;
+      height: 28px;
       border: none;
       border-radius: 4px;
       cursor: pointer;
@@ -298,38 +307,56 @@ export class SettingsPanel {
       padding: 0;
     }
     
-    .keyword-item input[type="color"]::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-    
-    .keyword-item input[type="color"]::-webkit-color-swatch {
+    .color-picker-wrapper input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .color-picker-wrapper input[type="color"]::-webkit-color-swatch {
       border: 1px solid var(--border-color);
       border-radius: 4px;
     }
     
-    .keyword-name {
-      font-family: 'SF Mono', Monaco, 'Courier New', monospace;
-      font-size: 13px;
+    .color-picker-wrapper.empty input[type="color"]::-webkit-color-swatch {
+      background: linear-gradient(135deg, #333 25%, #444 25%, #444 50%, #333 50%, #333 75%, #444 75%);
+      background-size: 8px 8px;
     }
     
-    .disabled .slider-group {
-      opacity: 0.4;
-      pointer-events: none;
+    .keyword-name {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      flex: 1;
+    }
+    
+    .clear-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .keyword-item:hover .clear-btn { opacity: 1; }
+    .clear-btn:hover { color: var(--danger-color); }
+    
+    .theme-default-badge {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--border-color);
+      padding: 2px 6px;
+      border-radius: 3px;
     }
   </style>
 </head>
 <body>
-  <h1>Python Semantic Highlighter</h1>
-  <p class="subtitle">Configure colors for semantic highlighting</p>
+  <h1>🎨 Python Semantic Highlighter</h1>
+  <p class="subtitle">Configure colors for semantic highlighting. Changes apply immediately.</p>
   
   <h2>Semantic Categories</h2>
-  <p class="subtitle">Each category uses hash-based coloring within the specified HSV range</p>
-  
+  <p class="subtitle">Hash-based coloring within HSV ranges. Toggle off to use IDE theme defaults.</p>
   <div id="semantic-categories"></div>
   
   <h2>Keyword Colors</h2>
-  <p class="subtitle">Fixed colors for Python keywords</p>
-  
+  <p class="subtitle">Click color swatch to set custom color. Click ✕ to reset to theme default.</p>
   <div id="keyword-colors" class="keyword-grid"></div>
 
   <script>
@@ -337,7 +364,7 @@ export class SettingsPanel {
     
     const categoryLabels = {
       localVariable: 'Local Variable',
-      globalVariable: 'Global Variable',
+      globalVariable: 'Global Variable', 
       parameter: 'Parameter',
       functionDef: 'Function Definition',
       functionCall: 'Function Call',
@@ -348,7 +375,7 @@ export class SettingsPanel {
       typeAnnotation: 'Type Annotation',
       decorator: 'Decorator',
       self: 'self / cls',
-      builtin: 'Builtin'
+      builtin: 'Built-in'
     };
     
     const defaultCategories = {
@@ -367,26 +394,22 @@ export class SettingsPanel {
       builtin: { enabled: true, hueRange: [220, 260], saturation: [40, 60], lightness: [55, 70] }
     };
     
-    const defaultKeywords = {
-      'def': '#CC7832', 'class': '#CC7832', 'return': '#CC7832', 'yield': '#CC7832',
-      'await': '#CC7832', 'async': '#CC7832', 'if': '#CC7832', 'elif': '#CC7832',
-      'else': '#CC7832', 'for': '#CC7832', 'while': '#CC7832', 'break': '#CC7832',
-      'continue': '#CC7832', 'try': '#CC7832', 'except': '#CC7832', 'finally': '#CC7832',
-      'raise': '#CC7832', 'with': '#CC7832', 'as': '#CC7832', 'import': '#CC7832',
-      'from': '#CC7832', 'pass': '#CC7832', 'lambda': '#CC7832', 'global': '#CC7832',
-      'nonlocal': '#CC7832', 'assert': '#CC7832', 'del': '#CC7832', 'in': '#CC7832',
-      'is': '#CC7832', 'not': '#CC7832', 'and': '#CC7832', 'or': '#CC7832',
-      'match': '#CC7832', 'case': '#CC7832', 'type': '#CC7832'
-    };
+    const keywords = [
+      'def', 'class', 'return', 'yield', 'await', 'async',
+      'if', 'elif', 'else', 'for', 'while', 'break', 'continue',
+      'try', 'except', 'finally', 'raise', 'with', 'as',
+      'import', 'from', 'pass', 'lambda', 'global', 'nonlocal',
+      'assert', 'del', 'in', 'is', 'not', 'and', 'or',
+      'match', 'case', 'type'
+    ];
     
     let currentSettings = {
       semanticCategories: { ...defaultCategories },
-      keywordColors: { ...defaultKeywords }
+      keywordColors: {}
     };
     
     function hslToHex(h, s, l) {
-      s /= 100;
-      l /= 100;
+      s /= 100; l /= 100;
       const a = s * Math.min(l, 1 - l);
       const f = n => {
         const k = (n + h / 30) % 12;
@@ -401,15 +424,10 @@ export class SettingsPanel {
       container.innerHTML = '';
       
       for (const [key, label] of Object.entries(categoryLabels)) {
-        const config = currentSettings.semanticCategories[key] || defaultCategories[key];
+        const config = { ...defaultCategories[key], ...currentSettings.semanticCategories[key] };
         const card = document.createElement('div');
         card.className = 'category-card' + (config.enabled ? '' : ' disabled');
         card.dataset.category = key;
-        
-        const midHue = (config.hueRange[0] + config.hueRange[1]) / 2;
-        const midSat = (config.saturation[0] + config.saturation[1]) / 2;
-        const midLight = (config.lightness[0] + config.lightness[1]) / 2;
-        const previewColor = hslToHex(midHue, midSat, midLight);
         
         card.innerHTML = \`
           <div class="category-header">
@@ -419,57 +437,98 @@ export class SettingsPanel {
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="slider-group">
-            <div class="slider-label"><span>Hue Range</span><span>\${config.hueRange[0]}° - \${config.hueRange[1]}°</span></div>
-            <div class="dual-slider">
-              <span>\${config.hueRange[0]}</span>
+          
+          <div class="slider-row">
+            <span class="slider-label">Hue</span>
+            <div class="range-slider">
+              <div class="range-track"></div>
+              <div class="range-track-fill" data-fill="hue"></div>
               <input type="range" min="0" max="360" value="\${config.hueRange[0]}" data-field="hueMin">
               <input type="range" min="0" max="360" value="\${config.hueRange[1]}" data-field="hueMax">
-              <span>\${config.hueRange[1]}</span>
             </div>
+            <span class="slider-value" data-value="hue">\${config.hueRange[0]}° - \${config.hueRange[1]}°</span>
           </div>
-          <div class="slider-group">
-            <div class="slider-label"><span>Saturation</span><span>\${config.saturation[0]}% - \${config.saturation[1]}%</span></div>
-            <div class="dual-slider">
-              <span>\${config.saturation[0]}</span>
+          
+          <div class="slider-row">
+            <span class="slider-label">Saturation</span>
+            <div class="range-slider">
+              <div class="range-track"></div>
+              <div class="range-track-fill" data-fill="sat"></div>
               <input type="range" min="0" max="100" value="\${config.saturation[0]}" data-field="satMin">
               <input type="range" min="0" max="100" value="\${config.saturation[1]}" data-field="satMax">
-              <span>\${config.saturation[1]}</span>
             </div>
+            <span class="slider-value" data-value="sat">\${config.saturation[0]}% - \${config.saturation[1]}%</span>
           </div>
-          <div class="slider-group">
-            <div class="slider-label"><span>Lightness</span><span>\${config.lightness[0]}% - \${config.lightness[1]}%</span></div>
-            <div class="dual-slider">
-              <span>\${config.lightness[0]}</span>
+          
+          <div class="slider-row">
+            <span class="slider-label">Lightness</span>
+            <div class="range-slider">
+              <div class="range-track"></div>
+              <div class="range-track-fill" data-fill="light"></div>
               <input type="range" min="0" max="100" value="\${config.lightness[0]}" data-field="lightMin">
               <input type="range" min="0" max="100" value="\${config.lightness[1]}" data-field="lightMax">
-              <span>\${config.lightness[1]}</span>
             </div>
+            <span class="slider-value" data-value="light">\${config.lightness[0]}% - \${config.lightness[1]}%</span>
           </div>
-          <div class="color-preview" style="background: linear-gradient(90deg, \${hslToHex(config.hueRange[0], config.saturation[0], config.lightness[0])}, \${hslToHex(config.hueRange[1], config.saturation[1], config.lightness[1])})"></div>
+          
+          <div class="color-preview"></div>
         \`;
         
         container.appendChild(card);
+        updateSliderFills(card, config);
+        updateColorPreview(card, config);
         
-        // Add event listeners
-        card.querySelectorAll('input').forEach(input => {
-          input.addEventListener('change', () => handleCategoryChange(key, card));
-          input.addEventListener('input', () => updatePreview(key, card));
+        // Event listeners
+        card.querySelector('[data-field="enabled"]').addEventListener('change', (e) => {
+          card.className = 'category-card' + (e.target.checked ? '' : ' disabled');
+          saveCategory(key, card);
+        });
+        
+        card.querySelectorAll('input[type="range"]').forEach(input => {
+          input.addEventListener('input', () => {
+            const cfg = getConfigFromCard(card);
+            updateSliderFills(card, cfg);
+            updateColorPreview(card, cfg);
+            updateSliderLabels(card, cfg);
+          });
+          input.addEventListener('change', () => saveCategory(key, card));
         });
       }
     }
     
-    function handleCategoryChange(category, card) {
-      const config = getConfigFromCard(card);
-      currentSettings.semanticCategories[category] = config;
+    function updateSliderFills(card, config) {
+      const hueFill = card.querySelector('[data-fill="hue"]');
+      const satFill = card.querySelector('[data-fill="sat"]');
+      const lightFill = card.querySelector('[data-fill="light"]');
       
-      vscode.postMessage({
-        command: 'updateSemanticCategory',
-        category,
-        config
-      });
+      hueFill.style.left = (config.hueRange[0] / 360 * 100) + '%';
+      hueFill.style.width = ((config.hueRange[1] - config.hueRange[0]) / 360 * 100) + '%';
       
-      card.className = 'category-card' + (config.enabled ? '' : ' disabled');
+      satFill.style.left = config.saturation[0] + '%';
+      satFill.style.width = (config.saturation[1] - config.saturation[0]) + '%';
+      
+      lightFill.style.left = config.lightness[0] + '%';
+      lightFill.style.width = (config.lightness[1] - config.lightness[0]) + '%';
+    }
+    
+    function updateColorPreview(card, config) {
+      const preview = card.querySelector('.color-preview');
+      const steps = 10;
+      const colors = [];
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const h = config.hueRange[0] + t * (config.hueRange[1] - config.hueRange[0]);
+        const s = config.saturation[0] + t * (config.saturation[1] - config.saturation[0]);
+        const l = config.lightness[0] + t * (config.lightness[1] - config.lightness[0]);
+        colors.push(hslToHex(h, s, l));
+      }
+      preview.style.background = 'linear-gradient(90deg, ' + colors.join(', ') + ')';
+    }
+    
+    function updateSliderLabels(card, config) {
+      card.querySelector('[data-value="hue"]').textContent = config.hueRange[0] + '° - ' + config.hueRange[1] + '°';
+      card.querySelector('[data-value="sat"]').textContent = config.saturation[0] + '% - ' + config.saturation[1] + '%';
+      card.querySelector('[data-value="light"]').textContent = config.lightness[0] + '% - ' + config.lightness[1] + '%';
     }
     
     function getConfigFromCard(card) {
@@ -490,69 +549,67 @@ export class SettingsPanel {
       };
     }
     
-    function updatePreview(category, card) {
+    function saveCategory(category, card) {
       const config = getConfigFromCard(card);
-      const preview = card.querySelector('.color-preview');
-      preview.style.background = \`linear-gradient(90deg, \${hslToHex(config.hueRange[0], config.saturation[0], config.lightness[0])}, \${hslToHex(config.hueRange[1], config.saturation[1], config.lightness[1])})\`;
-      
-      // Update labels
-      card.querySelector('.slider-group:nth-child(2) .slider-label span:last-child').textContent = \`\${config.hueRange[0]}° - \${config.hueRange[1]}°\`;
-      card.querySelector('.slider-group:nth-child(3) .slider-label span:last-child').textContent = \`\${config.saturation[0]}% - \${config.saturation[1]}%\`;
-      card.querySelector('.slider-group:nth-child(4) .slider-label span:last-child').textContent = \`\${config.lightness[0]}% - \${config.lightness[1]}%\`;
-      
-      // Update slider labels
-      const sliders = card.querySelectorAll('.dual-slider');
-      sliders[0].querySelector('span:first-child').textContent = config.hueRange[0];
-      sliders[0].querySelector('span:last-child').textContent = config.hueRange[1];
-      sliders[1].querySelector('span:first-child').textContent = config.saturation[0];
-      sliders[1].querySelector('span:last-child').textContent = config.saturation[1];
-      sliders[2].querySelector('span:first-child').textContent = config.lightness[0];
-      sliders[2].querySelector('span:last-child').textContent = config.lightness[1];
+      currentSettings.semanticCategories[category] = config;
+      vscode.postMessage({ command: 'updateSemanticCategory', category, config });
     }
     
     function renderKeywordColors() {
       const container = document.getElementById('keyword-colors');
       container.innerHTML = '';
       
-      for (const [keyword, color] of Object.entries(currentSettings.keywordColors)) {
+      for (const keyword of keywords) {
+        const color = currentSettings.keywordColors[keyword] || '';
+        const hasColor = color && color !== '';
+        
         const item = document.createElement('div');
-        item.className = 'keyword-item';
+        item.className = 'keyword-item' + (hasColor ? ' has-color' : '');
         item.innerHTML = \`
-          <input type="color" value="\${color}" data-keyword="\${keyword}">
+          <div class="color-picker-wrapper \${hasColor ? '' : 'empty'}">
+            <input type="color" value="\${hasColor ? color : '#CC7832'}" data-keyword="\${keyword}">
+          </div>
           <span class="keyword-name">\${keyword}</span>
+          \${hasColor ? '<button class="clear-btn" title="Reset to theme default">✕</button>' : '<span class="theme-default-badge">theme</span>'}
         \`;
         container.appendChild(item);
         
-        item.querySelector('input').addEventListener('change', (e) => {
+        const colorInput = item.querySelector('input[type="color"]');
+        colorInput.addEventListener('change', (e) => {
           currentSettings.keywordColors[keyword] = e.target.value;
-          vscode.postMessage({
-            command: 'updateKeywordColor',
-            keyword,
-            color: e.target.value
-          });
+          vscode.postMessage({ command: 'updateKeywordColor', keyword, color: e.target.value });
+          renderKeywordColors();
         });
+        
+        const clearBtn = item.querySelector('.clear-btn');
+        if (clearBtn) {
+          clearBtn.addEventListener('click', () => {
+            delete currentSettings.keywordColors[keyword];
+            vscode.postMessage({ command: 'clearKeywordColor', keyword });
+            renderKeywordColors();
+          });
+        }
       }
     }
     
     window.addEventListener('message', event => {
       const message = event.data;
       if (message.command === 'settingsLoaded') {
-        currentSettings.semanticCategories = { ...defaultCategories, ...message.semanticCategories };
-        currentSettings.keywordColors = { ...defaultKeywords, ...message.keywordColors };
+        currentSettings.semanticCategories = { ...defaultCategories };
+        for (const [key, val] of Object.entries(message.semanticCategories || {})) {
+          currentSettings.semanticCategories[key] = { ...defaultCategories[key], ...val };
+        }
+        currentSettings.keywordColors = message.keywordColors || {};
         renderSemanticCategories();
         renderKeywordColors();
       }
     });
     
-    // Initial render
     renderSemanticCategories();
     renderKeywordColors();
-    
-    // Request current settings
     vscode.postMessage({ command: 'getSettings' });
   </script>
 </body>
 </html>`;
   }
 }
-
