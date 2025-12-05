@@ -193,11 +193,14 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('pythonSemanticHighlighter')) {
+        // Clear decoration cache to force recreation with new colors
+        clearDecorationCache(decorationCache);
+        
         // Re-highlight all visible Python editors
         for (const editor of vscode.window.visibleTextEditors) {
           if (editor.document.languageId === 'python') {
             if (isEnabled()) {
-              scheduleHighlight(editor.document);
+              highlightDocument(editor.document, editor);
             } else {
               clearDocumentDecorations(editor.document.uri.toString());
             }

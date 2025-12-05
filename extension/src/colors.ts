@@ -1,13 +1,39 @@
 import * as vscode from 'vscode';
 import { SymbolEntry } from './highlighter';
 
-// Python keywords get fixed colors for global consistency
-const KEYWORD_COLOR = '#CC7832'; // Orange (IntelliJ-style keyword color)
+// Symbol type mapping from rust output to our detailed categories
+type SymbolCategory = 
+  | 'keyword'
+  | 'keyword.control'
+  | 'keyword.async'
+  | 'function.declaration'
+  | 'function.call'
+  | 'class.declaration'
+  | 'class.reference'
+  | 'parameter'
+  | 'variable'
+  | 'variable.self'
+  | 'attribute'
+  | 'decorator'
+  | 'type_annotation'
+  | 'builtin';
 
-// Builtin functions get a distinct color
-const BUILTIN_COLOR = '#8888C6';
+type ColorMode = 'semantic' | 'fixed' | 'inherit';
 
-// Python builtins that should have consistent colors
+interface SymbolColorConfig {
+  mode: ColorMode;
+  color?: string;
+  saturation?: number;
+  lightness?: number;
+}
+
+interface ColorSettings {
+  saturation: number;
+  lightness: number;
+  hueOffset: number;
+}
+
+// Python builtins that should be recognized
 const PYTHON_BUILTINS = new Set([
   'abs', 'aiter', 'all', 'any', 'anext', 'ascii', 'bin', 'bool', 'breakpoint',
   'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex',
@@ -18,15 +44,89 @@ const PYTHON_BUILTINS = new Set([
   'oct', 'open', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed',
   'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum',
   'super', 'tuple', 'type', 'vars', 'zip', '__import__',
-  // Common special names
   'None', 'True', 'False', 'Ellipsis', 'NotImplemented',
   '__name__', '__doc__', '__package__', '__loader__', '__spec__',
   '__annotations__', '__builtins__', '__file__', '__cached__',
-  // Exception types
   'Exception', 'BaseException', 'ValueError', 'TypeError', 'KeyError',
   'IndexError', 'AttributeError', 'ImportError', 'RuntimeError', 'StopIteration',
   'OSError', 'IOError', 'FileNotFoundError', 'PermissionError', 'ZeroDivisionError',
 ]);
+
+// Async keywords
+const ASYNC_KEYWORDS = new Set(['async', 'await']);
+
+// Control flow keywords  
+const CONTROL_KEYWORDS = new Set([
+  'if', 'elif', 'else', 'for', 'while', 'break', 'continue', 
+  'return', 'yield', 'raise', 'try', 'except', 'finally', 'with', 'match', 'case'
+]);
+
+/**
+ * Get configuration from VS Code settings
+ */
+function getConfig() {
+  return vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+}
+
+function getColorSettings(): ColorSettings {
+  const config = getConfig();
+  const settings = config.get<ColorSettings>('colorSettings', {
+    saturation: 45,
+    lightness: 65,
+    hueOffset: 0
+  });
+  return settings;
+}
+
+function getSymbolColors(): Record<string, SymbolColorConfig> {
+  const config = getConfig();
+  return config.get<Record<string, SymbolColorConfig>>('symbolColors', {});
+}
+
+/**
+ * Determine the detailed symbol category
+ */
+function getSymbolCategory(name: string, kind: string, isDeclaration: boolean = false): SymbolCategory {
+  // Check for self
+  if (name === 'self' || name === 'cls') {
+    return 'variable.self';
+  }
+
+  // Check for builtins (only for variables, not type annotations)
+  if (kind === 'variable' && PYTHON_BUILTINS.has(name)) {
+    return 'builtin';
+  }
+
+  // Check for keywords
+  if (kind === 'keyword') {
+    if (ASYNC_KEYWORDS.has(name)) {
+      return 'keyword.async';
+    }
+    if (CONTROL_KEYWORDS.has(name)) {
+      return 'keyword.control';
+    }
+    return 'keyword';
+  }
+
+  // Map kinds from Rust output
+  switch (kind) {
+    case 'decorator':
+      return 'decorator';
+    case 'type_annotation':
+      return 'type_annotation';
+    case 'function':
+      return isDeclaration ? 'function.declaration' : 'function.call';
+    case 'class':
+      return isDeclaration ? 'class.declaration' : 'class.reference';
+    case 'parameter':
+      return 'parameter';
+    case 'attribute':
+      return 'attribute';
+    case 'variable':
+    default:
+      return 'variable';
+  }
+}
 
 /**
  * Generate a hash code for a string
@@ -36,7 +136,7 @@ function hashCode(str: string): number {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return Math.abs(hash);
 }
@@ -57,60 +157,94 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 /**
- * Generate a visually distinct color from a symbol name hash
- * Uses HSL color space for better distribution
+ * Generate a semantic color based on symbol name hash
  */
-export function generateColorForSymbol(name: string, kind: string): string {
-  // Keywords get a fixed color
-  if (kind === 'keyword') {
-    return KEYWORD_COLOR;
-  }
-
-  // Python builtins get a distinct color
-  if (PYTHON_BUILTINS.has(name)) {
-    return BUILTIN_COLOR;
-  }
-
+function generateSemanticColor(
+  name: string, 
+  category: SymbolCategory,
+  globalSettings: ColorSettings,
+  symbolConfig?: SymbolColorConfig
+): string {
   const hash = hashCode(name);
   
-  // Use different hue ranges for different symbol kinds to help distinguish them
-  let hueOffset = 0;
-  let saturation = 65;
-  let lightness = 55;
-
-  switch (kind) {
-    case 'function':
-      hueOffset = 0;
-      saturation = 70;
-      lightness = 60;
+  // Use symbol-specific settings or fall back to global
+  const saturation = symbolConfig?.saturation ?? globalSettings.saturation;
+  const lightness = symbolConfig?.lightness ?? globalSettings.lightness;
+  
+  // Add category-based hue offset for visual distinction
+  let categoryHueOffset = 0;
+  switch (category) {
+    case 'function.declaration':
+    case 'function.call':
+      categoryHueOffset = 0;
       break;
-    case 'class':
-      hueOffset = 60;
-      saturation = 75;
-      lightness = 55;
+    case 'class.declaration':
+    case 'class.reference':
+      categoryHueOffset = 40;
       break;
     case 'parameter':
-      hueOffset = 120;
-      saturation = 60;
-      lightness = 60;
+      categoryHueOffset = 80;
       break;
     case 'attribute':
-      hueOffset = 180;
-      saturation = 55;
-      lightness = 58;
+      categoryHueOffset = 120;
+      break;
+    case 'type_annotation':
+      categoryHueOffset = 160;
       break;
     case 'variable':
-    default:
-      hueOffset = 240;
-      saturation = 65;
-      lightness = 62;
+    case 'variable.self':
+      categoryHueOffset = 200;
       break;
+    case 'decorator':
+      categoryHueOffset = 280;
+      break;
+    default:
+      categoryHueOffset = 0;
   }
 
-  // Generate hue from hash, distributed across 360 degrees
-  const hue = ((hash % 360) + hueOffset) % 360;
+  const hue = ((hash % 360) + globalSettings.hueOffset + categoryHueOffset) % 360;
   
   return hslToHex(hue, saturation, lightness);
+}
+
+/**
+ * Get color for a symbol based on settings
+ */
+export function getColorForSymbol(
+  name: string, 
+  kind: string,
+  isDeclaration: boolean = false
+): string | null {
+  const category = getSymbolCategory(name, kind, isDeclaration);
+  const globalSettings = getColorSettings();
+  const symbolColors = getSymbolColors();
+  
+  // Get config for this category, with fallback chain
+  let config = symbolColors[category];
+  
+  // Fallback to parent category if not found
+  if (!config) {
+    const parentCategory = category.split('.')[0];
+    config = symbolColors[parentCategory];
+  }
+  
+  // Default to semantic mode if no config
+  if (!config) {
+    config = { mode: 'semantic' };
+  }
+
+  switch (config.mode) {
+    case 'fixed':
+      return config.color || null;
+    
+    case 'inherit':
+      // Return null to skip decoration (let editor theme handle it)
+      return null;
+    
+    case 'semantic':
+    default:
+      return generateSemanticColor(name, category, globalSettings, config);
+  }
 }
 
 export interface DecorationEntry {
@@ -126,10 +260,18 @@ export function createDecorations(
   decorationCache: Map<string, vscode.TextEditorDecorationType>
 ): DecorationEntry[] {
   const result: DecorationEntry[] = [];
-  const rangesByColor = new Map<string, { color: string; ranges: vscode.Range[] }>();
+  const rangesByColor = new Map<string, vscode.Range[]>();
 
   for (const symbol of symbols) {
-    const color = generateColorForSymbol(symbol.name, symbol.kind);
+    // Determine if this is a declaration (first occurrence for functions/classes)
+    const isDeclaration = (symbol.kind === 'function' || symbol.kind === 'class');
+    
+    const color = getColorForSymbol(symbol.name, symbol.kind, isDeclaration);
+    
+    // Skip if color is null (inherit mode)
+    if (!color) {
+      continue;
+    }
     
     const ranges = symbol.occurrences.map(occ => {
       const startPos = new vscode.Position(occ.line, occ.column);
@@ -137,24 +279,23 @@ export function createDecorations(
       return new vscode.Range(startPos, endPos);
     });
 
-    // Group by color to minimize decoration types
-    const key = color;
-    const existing = rangesByColor.get(key);
+    // Group by color
+    const existing = rangesByColor.get(color);
     if (existing) {
-      existing.ranges.push(...ranges);
+      existing.push(...ranges);
     } else {
-      rangesByColor.set(key, { color, ranges });
+      rangesByColor.set(color, ranges);
     }
   }
 
   // Create decoration types for each unique color
-  for (const [key, { color, ranges }] of rangesByColor) {
-    let decorationType = decorationCache.get(key);
+  for (const [color, ranges] of rangesByColor) {
+    let decorationType = decorationCache.get(color);
     if (!decorationType) {
       decorationType = vscode.window.createTextEditorDecorationType({
         color: color,
       });
-      decorationCache.set(key, decorationType);
+      decorationCache.set(color, decorationType);
     }
     result.push({ decorationType, ranges });
   }
@@ -173,4 +314,3 @@ export function clearDecorationCache(
   }
   cache.clear();
 }
-

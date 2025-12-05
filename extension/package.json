@@ -40,6 +40,80 @@
           "type": "number",
           "default": 150,
           "description": "Delay in milliseconds before re-running the highlighter after edits."
+        },
+        "pythonSemanticHighlighter.colorSettings": {
+          "type": "object",
+          "default": {
+            "saturation": 45,
+            "lightness": 65,
+            "hueOffset": 0
+          },
+          "description": "HSV color settings for semantic highlighting.",
+          "properties": {
+            "saturation": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 45,
+              "description": "Color saturation (0-100). Lower = more muted colors."
+            },
+            "lightness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 65,
+              "description": "Color lightness (0-100)."
+            },
+            "hueOffset": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 360,
+              "default": 0,
+              "description": "Global hue offset (0-360)."
+            }
+          }
+        },
+        "pythonSemanticHighlighter.symbolColors": {
+          "type": "object",
+          "default": {
+            "keyword": { "mode": "fixed", "color": "#CC7832" },
+            "keyword.control": { "mode": "fixed", "color": "#CC7832" },
+            "keyword.async": { "mode": "fixed", "color": "#CC7832" },
+            "function.declaration": { "mode": "semantic" },
+            "function.call": { "mode": "semantic" },
+            "class.declaration": { "mode": "semantic" },
+            "class.reference": { "mode": "semantic" },
+            "parameter": { "mode": "semantic" },
+            "variable": { "mode": "semantic" },
+            "variable.self": { "mode": "fixed", "color": "#94558D" },
+            "attribute": { "mode": "semantic" },
+            "decorator": { "mode": "fixed", "color": "#BBB529" },
+            "type_annotation": { "mode": "inherit" },
+            "builtin": { "mode": "fixed", "color": "#8888C6" }
+          },
+          "description": "Per-symbol color configuration. Mode can be 'semantic' (hash-based), 'fixed' (custom color), or 'inherit' (use editor theme).",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["semantic", "fixed", "inherit"],
+                "description": "Color mode: semantic (hash-based), fixed (custom), or inherit (editor theme)"
+              },
+              "color": {
+                "type": "string",
+                "description": "Hex color value (only used when mode is 'fixed')"
+              },
+              "saturation": {
+                "type": "number",
+                "description": "Override saturation for this symbol type"
+              },
+              "lightness": {
+                "type": "number",
+                "description": "Override lightness for this symbol type"
+              }
+            }
+          }
         }
       }
     }

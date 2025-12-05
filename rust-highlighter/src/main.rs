@@ -19,6 +19,8 @@ enum SymbolKind {
     Parameter,
     Attribute,
     Keyword,
+    Decorator,
+    TypeAnnotation,
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -105,14 +107,14 @@ impl<'a> SymbolCollector<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt {
             ast::Stmt::FunctionDef(func) => {
+                for decorator in &func.decorator_list {
+                    self.visit_decorator(decorator);
+                }
                 let mut cursor = self.record_keyword("def", func.range, None);
                 cursor = self.record_identifier_search(&func.name, SymbolKind::Function, func.range, cursor);
                 self.visit_arguments(&func.args);
-                for decorator in &func.decorator_list {
-                    self.visit_expr(decorator);
-                }
                 if let Some(returns) = &func.returns {
-                    self.visit_expr(returns);
+                    self.visit_type_annotation(returns);
                 }
                 for type_param in &func.type_params {
                     self.visit_type_param(type_param);
@@ -122,15 +124,15 @@ impl<'a> SymbolCollector<'a> {
                 }
             }
             ast::Stmt::AsyncFunctionDef(func) => {
+                for decorator in &func.decorator_list {
+                    self.visit_decorator(decorator);
+                }
                 let mut cursor = self.record_keyword("async", func.range, None);
                 cursor = self.record_keyword("def", func.range, cursor);
                 cursor = self.record_identifier_search(&func.name, SymbolKind::Function, func.range, cursor);
                 self.visit_arguments(&func.args);
-                for decorator in &func.decorator_list {
-                    self.visit_expr(decorator);
-                }
                 if let Some(returns) = &func.returns {
-                    self.visit_expr(returns);
+                    self.visit_type_annotation(returns);
                 }
                 for type_param in &func.type_params {
                     self.visit_type_param(type_param);
@@ -140,16 +142,16 @@ impl<'a> SymbolCollector<'a> {
                 }
             }
             ast::Stmt::ClassDef(class_def) => {
+                for decorator in &class_def.decorator_list {
+                    self.visit_decorator(decorator);
+                }
                 let mut cursor = self.record_keyword("class", class_def.range, None);
                 cursor = self.record_identifier_search(&class_def.name, SymbolKind::Class, class_def.range, cursor);
                 for base in &class_def.bases {
-                    self.visit_expr(base);
+                    self.visit_type_annotation(base);
                 }
                 for keyword in &class_def.keywords {
                     self.visit_keyword(keyword);
-                }
-                for decorator in &class_def.decorator_list {
-                    self.visit_expr(decorator);
                 }
                 for inner in &class_def.body {
                     self.visit_stmt(inner);
@@ -187,7 +189,7 @@ impl<'a> SymbolCollector<'a> {
             }
             ast::Stmt::AnnAssign(ann) => {
                 self.visit_expr(&ann.target);
-                self.visit_expr(&ann.annotation);
+                self.visit_type_annotation(&ann.annotation);
                 if let Some(value) = &ann.value {
                     self.visit_expr(value);
                 }
@@ -367,6 +369,72 @@ impl<'a> SymbolCollector<'a> {
             ast::Stmt::Continue(continue_stmt) => {
                 self.record_keyword("continue", continue_stmt.range, None);
             }
+        }
+    }
+
+    fn visit_decorator(&mut self, expr: &ast::Expr) {
+        // Decorators are special - we want to mark the whole decorator expression
+        match expr {
+            ast::Expr::Name(name) => {
+                self.record_identifier_at_range(&name.id, SymbolKind::Decorator, name.range);
+            }
+            ast::Expr::Attribute(attr) => {
+                self.visit_expr(&attr.value);
+                self.record_identifier_search(&attr.attr, SymbolKind::Decorator, attr.range, None);
+            }
+            ast::Expr::Call(call) => {
+                // For decorator calls like @decorator(args), mark the function as decorator
+                match call.func.as_ref() {
+                    ast::Expr::Name(name) => {
+                        self.record_identifier_at_range(&name.id, SymbolKind::Decorator, name.range);
+                    }
+                    ast::Expr::Attribute(attr) => {
+                        self.visit_expr(&attr.value);
+                        self.record_identifier_search(&attr.attr, SymbolKind::Decorator, attr.range, None);
+                    }
+                    _ => self.visit_expr(&call.func),
+                }
+                // Visit arguments normally
+                for arg in &call.args {
+                    self.visit_expr(arg);
+                }
+                for keyword in &call.keywords {
+                    self.visit_keyword(keyword);
+                }
+            }
+            _ => self.visit_expr(expr),
+        }
+    }
+
+    fn visit_type_annotation(&mut self, expr: &ast::Expr) {
+        // Type annotations get special handling
+        match expr {
+            ast::Expr::Name(name) => {
+                self.record_identifier_at_range(&name.id, SymbolKind::TypeAnnotation, name.range);
+            }
+            ast::Expr::Attribute(attr) => {
+                self.visit_type_annotation(&attr.value);
+                self.record_identifier_search(&attr.attr, SymbolKind::TypeAnnotation, attr.range, None);
+            }
+            ast::Expr::Subscript(sub) => {
+                // For Generic types like List[int], Optional[str]
+                self.visit_type_annotation(&sub.value);
+                self.visit_type_annotation(&sub.slice);
+            }
+            ast::Expr::Tuple(tuple) => {
+                for elt in &tuple.elts {
+                    self.visit_type_annotation(elt);
+                }
+            }
+            ast::Expr::BinOp(bin_op) => {
+                // For union types like int | str
+                self.visit_type_annotation(&bin_op.left);
+                self.visit_type_annotation(&bin_op.right);
+            }
+            ast::Expr::Constant(_) => {
+                // String annotations, None, etc - skip
+            }
+            _ => self.visit_expr(expr),
         }
     }
 
@@ -671,7 +739,7 @@ impl<'a> SymbolCollector<'a> {
     fn record_arg(&mut self, arg: &ast::Arg) {
         self.record_identifier_search(&arg.arg, SymbolKind::Parameter, arg.range, None);
         if let Some(annotation) = &arg.annotation {
-            self.visit_expr(annotation);
+            self.visit_type_annotation(annotation);
         }
     }
 
