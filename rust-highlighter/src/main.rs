@@ -882,6 +882,56 @@ impl<'a> SymbolCollector<'a> {
     }
 }
 
+/// Preprocess source to handle Jupyter/IPython magic commands
+/// Returns (processed_source, line_mapping) where line_mapping maps processed line -> original line
+fn preprocess_source(source: &str) -> String {
+    let mut result = String::with_capacity(source.len());
+    
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        
+        // Check for cell magic (%%magic) - replace with comment
+        if trimmed.starts_with("%%") {
+            // Replace with a comment of the same length to preserve positions
+            result.push_str(&"#".repeat(line.len()));
+            result.push('\n');
+            continue;
+        }
+        
+        // Check for line magic (%magic) but not %% and not inside string
+        if trimmed.starts_with('%') && !trimmed.starts_with("%%") {
+            result.push_str(&"#".repeat(line.len()));
+            result.push('\n');
+            continue;
+        }
+        
+        // Check for shell command (!command)
+        if trimmed.starts_with('!') {
+            result.push_str(&"#".repeat(line.len()));
+            result.push('\n');
+            continue;
+        }
+        
+        // Check for ? help syntax (obj? or obj??)
+        if trimmed.ends_with('?') && !trimmed.contains('"') && !trimmed.contains('\'') {
+            result.push_str(&"#".repeat(line.len()));
+            result.push('\n');
+            continue;
+        }
+        
+        // Keep original line
+        result.push_str(line);
+        result.push('\n');
+    }
+    
+    // Remove trailing newline if original didn't have one
+    if !source.ends_with('\n') && result.ends_with('\n') {
+        result.pop();
+    }
+    
+    result
+}
+
 fn main() -> Result<()> {
     let mut args = env::args().skip(1);
     let path = match args.next() {
@@ -892,9 +942,13 @@ fn main() -> Result<()> {
     let source = fs::read_to_string(&path)
         .with_context(|| format!("failed to read {}", path.display()))?;
 
-    let suite = ast::Suite::parse(&source, path.to_string_lossy().as_ref())
+    // Preprocess to handle Jupyter magic commands
+    let processed_source = preprocess_source(&source);
+
+    let suite = ast::Suite::parse(&processed_source, path.to_string_lossy().as_ref())
         .context("failed to parse python source")?;
 
+    // Use original source for position calculations
     let line_index = LineIndex::new(&source);
     let mut collector = SymbolCollector::new(&source, &line_index);
     collector.visit_suite(&suite);
