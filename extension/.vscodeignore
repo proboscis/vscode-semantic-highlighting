@@ -14,5 +14,4 @@ tsconfig.json
 ../rust-highlighter/**
 **/*.ts
 !bin/**
-
-
+!screenshots/**
