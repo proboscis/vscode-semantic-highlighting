@@ -5,7 +5,24 @@
 
 IntelliJ-style semantic highlighting for Python in VS Code. Each symbol gets a unique color based on its name, making it easy to track variables and understand code at a glance.
 
-**👉 For user documentation, see [extension/README.md](extension/README.md)**
+![Function Colorization Example](extension/screenshots/function_colorization_example.png)
+
+## ✨ Features
+
+- **Unique colors for each symbol** — Same variable = same color throughout the file
+- **Smart color distribution** — Adjacent variables get maximally different colors
+- **Per-category customization** — Configure colors for variables, parameters, functions, classes, etc.
+- **Visual settings panel** — Circular hue picker and HSV sliders
+- **Jupyter notebook support** — Works with `.ipynb` files and magic commands
+- **Fast Rust parser** — Sub-millisecond parsing using `rustpython-parser`
+
+![Large Function Example](extension/screenshots/large_func_example.png)
+
+### Settings Panel
+
+![Settings Panel](extension/screenshots/settings_pane.png)
+
+**👉 For full user documentation, see [extension/README.md](extension/README.md)**
 
 ## Project Structure
 
