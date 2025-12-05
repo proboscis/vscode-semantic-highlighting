@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
@@ -64,6 +64,41 @@
         }
       ]
     },
+    "walkthroughs": [
+      {
+        "id": "pythonSemanticHighlighter.welcome",
+        "title": "Get Started with Python Semantic Highlighter",
+        "description": "Learn how to customize your Python code colors",
+        "steps": [
+          {
+            "id": "openSettings",
+            "title": "Open Settings Panel",
+            "description": "Customize colors for each semantic category with our visual settings panel.\n\n[Open Settings Panel](command:pythonSemanticHighlighter.openSettings)",
+            "media": {
+              "markdown": "## 🎨 Visual Color Configuration\n\nCustomize:\n- **Hue ranges** with circular color picker\n- **Saturation & Lightness** with sliders\n- **Keyword colors** with color pickers\n\nClick the button below to open the settings panel."
+            },
+            "completionEvents": ["onCommand:pythonSemanticHighlighter.openSettings"]
+          },
+          {
+            "id": "openPythonFile",
+            "title": "Open a Python File",
+            "description": "Open any Python file to see semantic highlighting in action.\n\n[Open File](command:workbench.action.files.openFile)",
+            "media": {
+              "markdown": "## 🐍 See It In Action\n\nOpen a Python file and watch as each variable, function, and class gets its own unique color based on its name."
+            },
+            "completionEvents": ["onLanguage:python"]
+          },
+          {
+            "id": "learnMore",
+            "title": "Learn More",
+            "description": "Check out the documentation for advanced configuration options.\n\n[View on GitHub](https://github.com/proboscis/vscode-semantic-highlighting)",
+            "media": {
+              "markdown": "## 📚 Documentation\n\n- Configure via `settings.json`\n- Customize each semantic category\n- Set fixed colors for keywords\n- Works with Jupyter notebooks"
+            }
+          }
+        ]
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Python Semantic Highlighter",
