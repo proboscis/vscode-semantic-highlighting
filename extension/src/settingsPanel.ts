@@ -228,6 +228,89 @@ export class SettingsPanel {
     
     .slider-label { font-size: 13px; color: var(--text-muted); }
     
+    /* Circular Hue Picker */
+    .hue-picker-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .circular-hue-picker {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+    
+    .hue-wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        hsl(0, 70%, 60%),
+        hsl(60, 70%, 60%),
+        hsl(120, 70%, 60%),
+        hsl(180, 70%, 60%),
+        hsl(240, 70%, 60%),
+        hsl(300, 70%, 60%),
+        hsl(360, 70%, 60%)
+      );
+      position: relative;
+    }
+    
+    .hue-wheel-inner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60%;
+      height: 60%;
+      background: var(--card-bg);
+      border-radius: 50%;
+    }
+    
+    .hue-handle {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border: 2px solid #333;
+      border-radius: 50%;
+      cursor: grab;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .hue-handle:active { cursor: grabbing; }
+    .hue-handle.start { border-color: var(--accent-color); }
+    .hue-handle.end { border-color: #e74c3c; }
+    
+    .hue-arc {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .hue-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .hue-value-display {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .hue-value-display span { color: var(--text-color); font-weight: 500; }
+    
     .range-slider {
       position: relative;
       height: 24px;
@@ -552,15 +635,24 @@ export class SettingsPanel {
             </label>
           </div>
           
-          <div class="slider-row">
-            <span class="slider-label">Hue</span>
-            <div class="range-slider">
-              <div class="range-track"></div>
-              <div class="range-track-fill" data-fill="hue"></div>
-              <input type="range" min="0" max="360" value="\${config.hueRange[0]}" data-field="hueMin">
-              <input type="range" min="0" max="360" value="\${config.hueRange[1]}" data-field="hueMax">
+          <div class="hue-picker-row">
+            <div class="circular-hue-picker" data-hue-picker>
+              <div class="hue-wheel">
+                <div class="hue-wheel-inner"></div>
+              </div>
+              <svg class="hue-arc" viewBox="0 0 100 100">
+                <path data-arc-path fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="8" stroke-linecap="round"/>
+              </svg>
+              <div class="hue-handle start" data-handle="start"></div>
+              <div class="hue-handle end" data-handle="end"></div>
+              <input type="hidden" data-field="hueMin" value="\${config.hueRange[0]}">
+              <input type="hidden" data-field="hueMax" value="\${config.hueRange[1]}">
             </div>
-            <span class="slider-value" data-value="hue">\${config.hueRange[0]}° - \${config.hueRange[1]}°</span>
+            <div class="hue-info">
+              <div class="hue-value-display">Start: <span data-value="hueStart">\${config.hueRange[0]}°</span></div>
+              <div class="hue-value-display">End: <span data-value="hueEnd">\${config.hueRange[1]}°</span></div>
+              <div class="hue-value-display">Range: <span data-value="hueRange">\${config.hueRange[1] - config.hueRange[0]}°</span></div>
+            </div>
           </div>
           
           <div class="slider-row">
@@ -607,22 +699,126 @@ export class SettingsPanel {
           });
           input.addEventListener('change', () => saveCategory(key, card));
         });
+        
+        // Circular hue picker drag handlers
+        setupHuePicker(card, key);
       }
     }
     
+    function setupHuePicker(card, categoryKey) {
+      const picker = card.querySelector('[data-hue-picker]');
+      if (!picker) return;
+      
+      const startHandle = picker.querySelector('[data-handle="start"]');
+      const endHandle = picker.querySelector('[data-handle="end"]');
+      
+      let isDragging = false;
+      let currentHandle = null;
+      
+      function getAngleFromEvent(e) {
+        const rect = picker.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dx = e.clientX - centerX;
+        const dy = e.clientY - centerY;
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+        if (angle < 0) angle += 360;
+        return Math.round(angle) % 360;
+      }
+      
+      function onMouseDown(handle, e) {
+        e.preventDefault();
+        isDragging = true;
+        currentHandle = handle;
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+      }
+      
+      function onMouseMove(e) {
+        if (!isDragging) return;
+        
+        const angle = getAngleFromEvent(e);
+        const hueMinInput = card.querySelector('[data-field="hueMin"]');
+        const hueMaxInput = card.querySelector('[data-field="hueMax"]');
+        
+        if (currentHandle === 'start') {
+          hueMinInput.value = angle;
+        } else {
+          hueMaxInput.value = angle;
+        }
+        
+        const cfg = getConfigFromCard(card);
+        updateSliderFills(card, cfg);
+        updateColorPreview(card, cfg);
+        updateSliderLabels(card, cfg);
+      }
+      
+      function onMouseUp() {
+        if (isDragging) {
+          isDragging = false;
+          currentHandle = null;
+          document.removeEventListener('mousemove', onMouseMove);
+          document.removeEventListener('mouseup', onMouseUp);
+          saveCategory(categoryKey, card);
+        }
+      }
+      
+      startHandle.addEventListener('mousedown', (e) => onMouseDown('start', e));
+      endHandle.addEventListener('mousedown', (e) => onMouseDown('end', e));
+    }
+    
     function updateSliderFills(card, config) {
-      const hueFill = card.querySelector('[data-fill="hue"]');
       const satFill = card.querySelector('[data-fill="sat"]');
       const lightFill = card.querySelector('[data-fill="light"]');
-      
-      hueFill.style.left = (config.hueRange[0] / 360 * 100) + '%';
-      hueFill.style.width = ((config.hueRange[1] - config.hueRange[0]) / 360 * 100) + '%';
       
       satFill.style.left = config.saturation[0] + '%';
       satFill.style.width = (config.saturation[1] - config.saturation[0]) + '%';
       
       lightFill.style.left = config.lightness[0] + '%';
       lightFill.style.width = (config.lightness[1] - config.lightness[0]) + '%';
+      
+      // Update circular hue picker
+      updateHuePicker(card, config.hueRange[0], config.hueRange[1]);
+    }
+    
+    function updateHuePicker(card, hueStart, hueEnd) {
+      const picker = card.querySelector('[data-hue-picker]');
+      if (!picker) return;
+      
+      const startHandle = picker.querySelector('[data-handle="start"]');
+      const endHandle = picker.querySelector('[data-handle="end"]');
+      const arcPath = picker.querySelector('[data-arc-path]');
+      
+      const radius = 50;
+      const handleRadius = 43; // Position handles on the wheel
+      
+      // Convert hue to radians (0° = top, clockwise)
+      const startRad = (hueStart - 90) * Math.PI / 180;
+      const endRad = (hueEnd - 90) * Math.PI / 180;
+      
+      // Position handles
+      const startX = 50 + handleRadius * Math.cos(startRad);
+      const startY = 50 + handleRadius * Math.sin(startRad);
+      const endX = 50 + handleRadius * Math.cos(endRad);
+      const endY = 50 + handleRadius * Math.sin(endRad);
+      
+      startHandle.style.left = startX + '%';
+      startHandle.style.top = startY + '%';
+      endHandle.style.left = endX + '%';
+      endHandle.style.top = endY + '%';
+      
+      // Draw arc
+      const arcRadius = 43;
+      const largeArc = (hueEnd - hueStart) > 180 ? 1 : 0;
+      const arcStartX = 50 + arcRadius * Math.cos(startRad);
+      const arcStartY = 50 + arcRadius * Math.sin(startRad);
+      const arcEndX = 50 + arcRadius * Math.cos(endRad);
+      const arcEndY = 50 + arcRadius * Math.sin(endRad);
+      
+      arcPath.setAttribute('d', 
+        'M ' + arcStartX + ' ' + arcStartY + ' ' +
+        'A ' + arcRadius + ' ' + arcRadius + ' 0 ' + largeArc + ' 1 ' + arcEndX + ' ' + arcEndY
+      );
     }
     
     function updateColorPreview(card, config) {
@@ -640,7 +836,14 @@ export class SettingsPanel {
     }
     
     function updateSliderLabels(card, config) {
-      card.querySelector('[data-value="hue"]').textContent = config.hueRange[0] + '° - ' + config.hueRange[1] + '°';
+      const hueStartEl = card.querySelector('[data-value="hueStart"]');
+      const hueEndEl = card.querySelector('[data-value="hueEnd"]');
+      const hueRangeEl = card.querySelector('[data-value="hueRange"]');
+      
+      if (hueStartEl) hueStartEl.textContent = config.hueRange[0] + '°';
+      if (hueEndEl) hueEndEl.textContent = config.hueRange[1] + '°';
+      if (hueRangeEl) hueRangeEl.textContent = (config.hueRange[1] - config.hueRange[0]) + '°';
+      
       card.querySelector('[data-value="sat"]').textContent = config.saturation[0] + '% - ' + config.saturation[1] + '%';
       card.querySelector('[data-value="light"]').textContent = config.lightness[0] + '% - ' + config.lightness[1] + '%';
     }
