@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
@@ -84,19 +84,19 @@
           "default": {
             "localVariable": {
               "enabled": true,
-              "hueRange": [180, 270],
-              "saturation": [40, 60],
+              "hueRange": [0, 360],
+              "saturation": [45, 65],
               "lightness": [55, 70]
             },
             "globalVariable": {
               "enabled": true,
-              "hueRange": [270, 360],
-              "saturation": [40, 60],
-              "lightness": [55, 70]
+              "hueRange": [0, 360],
+              "saturation": [50, 70],
+              "lightness": [50, 65]
             },
             "parameter": {
               "enabled": true,
-              "hueRange": [90, 150],
+              "hueRange": [0, 360],
               "saturation": [45, 65],
               "lightness": [55, 70]
             },

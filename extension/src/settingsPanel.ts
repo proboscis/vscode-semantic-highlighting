@@ -575,9 +575,9 @@ export class SettingsPanel {
     };
     
     const defaultCategories = {
-      localVariable: { enabled: true, hueRange: [180, 270], saturation: [40, 60], lightness: [55, 70] },
-      globalVariable: { enabled: true, hueRange: [270, 360], saturation: [40, 60], lightness: [55, 70] },
-      parameter: { enabled: true, hueRange: [90, 150], saturation: [45, 65], lightness: [55, 70] },
+      localVariable: { enabled: true, hueRange: [0, 360], saturation: [45, 65], lightness: [55, 70] },
+      globalVariable: { enabled: true, hueRange: [0, 360], saturation: [50, 70], lightness: [50, 65] },
+      parameter: { enabled: true, hueRange: [0, 360], saturation: [45, 65], lightness: [55, 70] },
       functionDef: { enabled: true, hueRange: [30, 60], saturation: [50, 70], lightness: [55, 70] },
       functionCall: { enabled: true, hueRange: [30, 60], saturation: [50, 70], lightness: [55, 70] },
       methodCall: { enabled: true, hueRange: [0, 30], saturation: [50, 70], lightness: [55, 70] },

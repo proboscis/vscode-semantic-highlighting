@@ -944,7 +944,13 @@ impl<'a> SymbolCollector<'a> {
                 }
             })
             .collect();
-        symbols.sort_by(|a, b| a.name.cmp(&b.name).then(a.kind.cmp(&b.kind)));
+        // Sort by FIRST OCCURRENCE position, not alphabetically
+        // This ensures variables are indexed in the order they appear in code
+        symbols.sort_by(|a, b| {
+            let a_first = a.occurrences.first().map(|o| (o.line, o.column));
+            let b_first = b.occurrences.first().map(|o| (o.line, o.column));
+            a_first.cmp(&b_first)
+        });
         HighlighterOutput { symbols }
     }
 }
