@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "proboscis",
   "engines": {
     "vscode": "^1.85.0"
@@ -48,7 +48,7 @@
         },
         "pythonSemanticHighlighter.semanticCategories": {
           "type": "object",
-          "description": "Semantic categories with random color allocation based on symbol name hash. Each category can be enabled/disabled and have HSV range configured.",
+          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**Use the visual settings panel:** `Cmd+Shift+P` → `Python Semantic Highlighter: Open Settings Panel`\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`",
           "default": {
             "localVariable": {
               "enabled": true,
@@ -162,7 +162,7 @@
         },
         "pythonSemanticHighlighter.keywordColors": {
           "type": "object",
-          "description": "Fixed colors for specific Python keywords. Empty string means use IDE theme default.",
+          "markdownDescription": "Fixed colors for specific Python keywords. Empty/unset means use IDE theme default.\n\n**Use the visual settings panel:** `Cmd+Shift+P` → `Python Semantic Highlighter: Open Settings Panel`\n\n**Example:**\n```json\n{\n  \"def\": \"#CC7832\",\n  \"return\": \"#CC7832\",\n  \"yield\": \"#B58900\"\n}\n```\n\n**Keywords:** `def`, `class`, `return`, `yield`, `await`, `async`, `if`, `elif`, `else`, `for`, `while`, `try`, `except`, `import`, `from`, etc.",
           "default": {},
           "additionalProperties": {
             "type": "string",
