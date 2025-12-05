@@ -19,21 +19,33 @@ export interface HighlighterOutput {
 }
 
 export function getRustBinaryPath(context: vscode.ExtensionContext): string {
-  // In development, use the local build
   const extensionPath = context.extensionPath;
   const binaryName = process.platform === 'win32'
     ? 'python-semantic-highlighter.exe'
     : 'python-semantic-highlighter';
   
-  // Try release build first, then debug
+  // For packaged extension, binary is in extension's bin directory
+  const packagedPath = path.join(extensionPath, 'bin', binaryName);
+  
+  // For development, try the local Rust build
   const releasePath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'release', binaryName);
   const debugPath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'debug', binaryName);
   
-  // For packaged extension, binary would be in extension directory
-  const packagedPath = path.join(extensionPath, 'bin', binaryName);
+  // Check packaged path first (for installed extension)
+  const fs = require('fs');
+  if (fs.existsSync(packagedPath)) {
+    return packagedPath;
+  }
+  // Then try development paths
+  if (fs.existsSync(releasePath)) {
+    return releasePath;
+  }
+  if (fs.existsSync(debugPath)) {
+    return debugPath;
+  }
   
-  // Return paths in order of preference
-  return releasePath;
+  // Default to packaged path (will show error if not found)
+  return packagedPath;
 }
 
 export async function analyzeFile(

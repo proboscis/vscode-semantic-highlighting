@@ -50,10 +50,9 @@
     "build": "npm run compile",
     "watch": "tsc -watch -p ./",
     "lint": "eslint . --ext ts",
-    "package": "vsce package",
+    "package": "vsce package --allow-missing-repository",
     "test": "echo \"No tests yet\"",
-    "build:rust": "cargo build --release --manifest-path ../rust-highlighter/Cargo.toml",
-    "postinstall": "npm run build:rust"
+    "build:rust": "cargo build --release --manifest-path ../rust-highlighter/Cargo.toml"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",
