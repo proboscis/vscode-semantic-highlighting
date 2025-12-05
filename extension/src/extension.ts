@@ -270,13 +270,20 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('pythonSemanticHighlighter')) {
-        // Clear decoration cache to force recreation with new colors
+        outputChannel.appendLine('Configuration changed, refreshing decorations...');
+        
+        // Clear ALL caches to force recreation with new colors
         clearDecorationCache(decorationCache);
+        analysisCache.clear();
+        
+        // Clear pending decorations map
+        pendingDecorations.clear();
         
         // Re-highlight all visible Python editors
         for (const editor of vscode.window.visibleTextEditors) {
           if (editor.document.languageId === 'python') {
             if (isEnabled()) {
+              outputChannel.appendLine(`Re-highlighting: ${editor.document.uri.fsPath}`);
               highlightDocument(editor.document, editor);
             } else {
               clearDocumentDecorations(editor.document.uri.toString());

@@ -251,6 +251,7 @@ export function getColorForSymbol(name: string, kind: string): string | null {
   if (category === 'keyword') {
     const keywordColors = getKeywordColors();
     const color = keywordColors[name];
+    console.log(`[SemanticHighlighter] Keyword "${name}" color from settings: "${color || '(not set)'}"`);
     // If no color set or empty string, return null to use IDE theme
     if (!color || color === '') {
       return null;
