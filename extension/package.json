@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "proboscis",
   "engines": {
     "vscode": "^1.85.0"
@@ -11,7 +11,8 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onLanguage:python"
+    "onLanguage:python",
+    "onNotebook:jupyter-notebook"
   ],
   "main": "./out/extension.js",
   "contributes": {

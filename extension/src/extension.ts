@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getRustBinaryPath, analyzeFile, HighlighterOutput } from './highlighter';
+import { getRustBinaryPath, analyzeFile, analyzeSource, HighlighterOutput } from './highlighter';
 import { createDecorations, clearDecorationCache, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
@@ -37,21 +37,30 @@ async function highlightDocument(
 
   const filePath = document.uri.fsPath;
   const documentKey = document.uri.toString();
-  
-  // Check if file exists on disk (not untitled)
-  if (!fs.existsSync(filePath)) {
-    outputChannel.appendLine(`Skipping unsaved file: ${filePath}`);
-    return;
-  }
+  const isNotebookCell = document.uri.scheme === 'vscode-notebook-cell';
+  const isUntitled = document.isUntitled;
+  const fileExists = !isNotebookCell && !isUntitled && fs.existsSync(filePath);
 
-  outputChannel.appendLine(`Analyzing: ${filePath}`);
+  outputChannel.appendLine(`Analyzing: ${isNotebookCell ? 'notebook cell' : filePath}`);
   const startTime = Date.now();
 
   try {
-    const result = await analyzeFile(filePath, binaryPath);
+    let result: HighlighterOutput | null;
+    
+    if (fileExists) {
+      // File exists on disk - use file path
+      result = await analyzeFile(filePath, binaryPath);
+    } else {
+      // Notebook cell, untitled, or unsaved - use document content via stdin
+      const source = document.getText();
+      if (!source.trim()) {
+        return; // Empty document
+      }
+      result = await analyzeSource(source, binaryPath);
+    }
     
     if (!result) {
-      outputChannel.appendLine(`Analysis failed for ${filePath}`);
+      outputChannel.appendLine(`Analysis failed for ${isNotebookCell ? 'notebook cell' : filePath}`);
       return;
     }
 
@@ -68,7 +77,7 @@ async function highlightDocument(
       }
     }
   } catch (error) {
-    outputChannel.appendLine(`Error analyzing ${filePath}: ${error}`);
+    outputChannel.appendLine(`Error analyzing ${isNotebookCell ? 'notebook cell' : filePath}: ${error}`);
   }
 }
 
@@ -214,6 +223,23 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Handle notebook cell changes
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeNotebookDocument((event) => {
+      // Re-highlight all Python cells in the notebook when cells change
+      for (const cell of event.notebook.getCells()) {
+        if (cell.document.languageId === 'python') {
+          const editor = vscode.window.visibleTextEditors.find(
+            e => e.document.uri.toString() === cell.document.uri.toString()
+          );
+          if (editor) {
+            scheduleHighlight(cell.document);
+          }
+        }
+      }
+    })
+  );
+
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (document.languageId === 'python') {
@@ -294,10 +320,24 @@ export function activate(context: vscode.ExtensionContext) {
     scheduleHighlight(activeEditor.document);
   }
 
-  // Highlight all visible Python editors
+  // Highlight all visible Python editors (including notebook cells)
   for (const editor of vscode.window.visibleTextEditors) {
     if (editor.document.languageId === 'python') {
       scheduleHighlight(editor.document);
+    }
+  }
+
+  // Highlight all open notebook Python cells
+  for (const notebook of vscode.workspace.notebookDocuments) {
+    for (const cell of notebook.getCells()) {
+      if (cell.document.languageId === 'python') {
+        const editor = vscode.window.visibleTextEditors.find(
+          e => e.document.uri.toString() === cell.document.uri.toString()
+        );
+        if (editor) {
+          scheduleHighlight(cell.document);
+        }
+      }
     }
   }
 
