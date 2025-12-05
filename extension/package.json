@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "your-name",
   "engines": {
     "vscode": "^1.85.0"
@@ -41,78 +41,163 @@
           "default": 150,
           "description": "Delay in milliseconds before re-running the highlighter after edits."
         },
-        "pythonSemanticHighlighter.colorSettings": {
+        "pythonSemanticHighlighter.semanticCategories": {
           "type": "object",
+          "description": "Semantic categories with random color allocation based on symbol name hash. Each category can be enabled/disabled and have HSV range configured.",
           "default": {
-            "saturation": 45,
-            "lightness": 65,
-            "hueOffset": 0
-          },
-          "description": "HSV color settings for semantic highlighting.",
-          "properties": {
-            "saturation": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 100,
-              "default": 45,
-              "description": "Color saturation (0-100). Lower = more muted colors."
+            "localVariable": {
+              "enabled": true,
+              "hueRange": [180, 270],
+              "saturation": [40, 60],
+              "lightness": [55, 70]
             },
-            "lightness": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 100,
-              "default": 65,
-              "description": "Color lightness (0-100)."
+            "globalVariable": {
+              "enabled": true,
+              "hueRange": [270, 360],
+              "saturation": [40, 60],
+              "lightness": [55, 70]
             },
-            "hueOffset": {
-              "type": "number",
-              "minimum": 0,
-              "maximum": 360,
-              "default": 0,
-              "description": "Global hue offset (0-360)."
+            "parameter": {
+              "enabled": true,
+              "hueRange": [90, 150],
+              "saturation": [45, 65],
+              "lightness": [55, 70]
+            },
+            "functionDef": {
+              "enabled": true,
+              "hueRange": [30, 60],
+              "saturation": [50, 70],
+              "lightness": [55, 70]
+            },
+            "functionCall": {
+              "enabled": true,
+              "hueRange": [30, 60],
+              "saturation": [50, 70],
+              "lightness": [55, 70]
+            },
+            "methodCall": {
+              "enabled": true,
+              "hueRange": [0, 30],
+              "saturation": [50, 70],
+              "lightness": [55, 70]
+            },
+            "classDef": {
+              "enabled": true,
+              "hueRange": [45, 75],
+              "saturation": [55, 75],
+              "lightness": [55, 70]
+            },
+            "classReference": {
+              "enabled": true,
+              "hueRange": [45, 75],
+              "saturation": [55, 75],
+              "lightness": [55, 70]
+            },
+            "attribute": {
+              "enabled": true,
+              "hueRange": [150, 210],
+              "saturation": [40, 55],
+              "lightness": [55, 70]
+            },
+            "typeAnnotation": {
+              "enabled": false,
+              "hueRange": [280, 320],
+              "saturation": [35, 50],
+              "lightness": [60, 75]
+            },
+            "decorator": {
+              "enabled": true,
+              "hueRange": [50, 70],
+              "saturation": [60, 80],
+              "lightness": [50, 65]
+            },
+            "self": {
+              "enabled": true,
+              "hueRange": [290, 310],
+              "saturation": [50, 70],
+              "lightness": [50, 65]
+            },
+            "builtin": {
+              "enabled": true,
+              "hueRange": [220, 260],
+              "saturation": [40, 60],
+              "lightness": [55, 70]
             }
-          }
-        },
-        "pythonSemanticHighlighter.symbolColors": {
-          "type": "object",
-          "default": {
-            "keyword": { "mode": "fixed", "color": "#CC7832" },
-            "keyword.control": { "mode": "fixed", "color": "#CC7832" },
-            "keyword.async": { "mode": "fixed", "color": "#CC7832" },
-            "function.declaration": { "mode": "semantic" },
-            "function.call": { "mode": "semantic" },
-            "class.declaration": { "mode": "semantic" },
-            "class.reference": { "mode": "semantic" },
-            "parameter": { "mode": "semantic" },
-            "variable": { "mode": "semantic" },
-            "variable.self": { "mode": "fixed", "color": "#94558D" },
-            "attribute": { "mode": "semantic" },
-            "decorator": { "mode": "fixed", "color": "#BBB529" },
-            "type_annotation": { "mode": "inherit" },
-            "builtin": { "mode": "fixed", "color": "#8888C6" }
           },
-          "description": "Per-symbol color configuration. Mode can be 'semantic' (hash-based), 'fixed' (custom color), or 'inherit' (use editor theme).",
           "additionalProperties": {
             "type": "object",
             "properties": {
-              "mode": {
-                "type": "string",
-                "enum": ["semantic", "fixed", "inherit"],
-                "description": "Color mode: semantic (hash-based), fixed (custom), or inherit (editor theme)"
+              "enabled": {
+                "type": "boolean",
+                "description": "Enable semantic coloring for this category"
               },
-              "color": {
-                "type": "string",
-                "description": "Hex color value (only used when mode is 'fixed')"
+              "hueRange": {
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Hue range [min, max] (0-360)"
               },
               "saturation": {
-                "type": "number",
-                "description": "Override saturation for this symbol type"
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Saturation range [min, max] (0-100)"
               },
               "lightness": {
-                "type": "number",
-                "description": "Override lightness for this symbol type"
+                "type": "array",
+                "items": { "type": "number" },
+                "minItems": 2,
+                "maxItems": 2,
+                "description": "Lightness range [min, max] (0-100)"
               }
             }
+          }
+        },
+        "pythonSemanticHighlighter.keywordColors": {
+          "type": "object",
+          "description": "Fixed colors for specific Python keywords.",
+          "default": {
+            "def": "#CC7832",
+            "class": "#CC7832",
+            "return": "#CC7832",
+            "yield": "#CC7832",
+            "await": "#CC7832",
+            "async": "#CC7832",
+            "if": "#CC7832",
+            "elif": "#CC7832",
+            "else": "#CC7832",
+            "for": "#CC7832",
+            "while": "#CC7832",
+            "break": "#CC7832",
+            "continue": "#CC7832",
+            "try": "#CC7832",
+            "except": "#CC7832",
+            "finally": "#CC7832",
+            "raise": "#CC7832",
+            "with": "#CC7832",
+            "as": "#CC7832",
+            "import": "#CC7832",
+            "from": "#CC7832",
+            "pass": "#CC7832",
+            "lambda": "#CC7832",
+            "global": "#CC7832",
+            "nonlocal": "#CC7832",
+            "assert": "#CC7832",
+            "del": "#CC7832",
+            "in": "#CC7832",
+            "is": "#CC7832",
+            "not": "#CC7832",
+            "and": "#CC7832",
+            "or": "#CC7832",
+            "match": "#CC7832",
+            "case": "#CC7832",
+            "type": "#CC7832"
+          },
+          "additionalProperties": {
+            "type": "string",
+            "description": "Hex color value for this keyword"
           }
         }
       }
@@ -139,5 +224,3 @@
   },
   "dependencies": {}
 }
-
-
