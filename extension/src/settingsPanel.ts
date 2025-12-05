@@ -311,6 +311,20 @@ export class SettingsPanel {
     
     .hue-value-display span { color: var(--text-color); font-weight: 500; }
     
+    .full-range-btn {
+      margin-top: 8px;
+      padding: 6px 12px;
+      background: var(--accent-color);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s;
+    }
+    
+    .full-range-btn:hover { background: var(--accent-hover); }
+    
     .range-slider {
       position: relative;
       height: 24px;
@@ -652,6 +666,7 @@ export class SettingsPanel {
               <div class="hue-value-display">Start: <span data-value="hueStart">\${config.hueRange[0]}°</span></div>
               <div class="hue-value-display">End: <span data-value="hueEnd">\${config.hueRange[1]}°</span></div>
               <div class="hue-value-display">Range: <span data-value="hueRange">\${config.hueRange[1] - config.hueRange[0]}°</span></div>
+              <button class="full-range-btn" data-full-range title="Set full hue range (0°-360°)">🌈 Full Range</button>
             </div>
           </div>
           
@@ -765,6 +780,23 @@ export class SettingsPanel {
       
       startHandle.addEventListener('mousedown', (e) => onMouseDown('start', e));
       endHandle.addEventListener('mousedown', (e) => onMouseDown('end', e));
+      
+      // Full Range button
+      const fullRangeBtn = card.querySelector('[data-full-range]');
+      if (fullRangeBtn) {
+        fullRangeBtn.addEventListener('click', () => {
+          const hueMinInput = card.querySelector('[data-field="hueMin"]');
+          const hueMaxInput = card.querySelector('[data-field="hueMax"]');
+          hueMinInput.value = 0;
+          hueMaxInput.value = 360;
+          
+          const cfg = getConfigFromCard(card);
+          updateSliderFills(card, cfg);
+          updateColorPreview(card, cfg);
+          updateSliderLabels(card, cfg);
+          saveCategory(categoryKey, card);
+        });
+      }
     }
     
     function updateSliderFills(card, config) {
