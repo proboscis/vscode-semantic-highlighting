@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { getRustBinaryPath, analyzeFile, HighlighterOutput } from './highlighter';
 import { createDecorations, clearDecorationCache, DecorationEntry } from './colors';
+import { SettingsPanel } from './settingsPanel';
 
 let outputChannel: vscode.OutputChannel;
 let binaryPath: string;
@@ -228,6 +229,12 @@ export function activate(context: vscode.ExtensionContext) {
       vscode.window.showInformationMessage(
         `Python Semantic Highlighter: ${!current ? 'Enabled' : 'Disabled'}`
       );
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pythonSemanticHighlighter.openSettings', () => {
+      SettingsPanel.createOrShow(context.extensionUri);
     })
   );
 
