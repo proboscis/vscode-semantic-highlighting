@@ -505,7 +505,7 @@ export class SettingsPanel {
       decorator: { enabled: true, hueRange: [50, 70], saturation: [60, 80], lightness: [50, 65] },
       self: { enabled: true, hueRange: [290, 310], saturation: [50, 70], lightness: [50, 65] },
       builtin: { enabled: true, hueRange: [220, 260], saturation: [40, 60], lightness: [55, 70] },
-      kwargName: { enabled: false, hueRange: [0, 360], saturation: [30, 40], lightness: [60, 70] }
+      kwargName: { enabled: true, hueRange: [0, 360], saturation: [40, 60], lightness: [55, 70] }
     };
     
     const keywords = [
