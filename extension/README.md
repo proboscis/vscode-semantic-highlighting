@@ -4,9 +4,7 @@
 
 Give each symbol a unique color based on its name — making it easy to track variables, spot patterns, and understand code flow at a glance.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/proboscis/vscode-semantic-highlighting/main/extension/screenshots/function_colorization_example.png" alt="Function Colorization Example" width="600">
-</p>
+![Function Colorization Example](screenshots/function_colorization_example.png)
 
 ## 🌟 Why This Extension?
 
@@ -16,9 +14,7 @@ Give each symbol a unique color based on its name — making it easy to track va
 | Hard to track data flow | Instantly see where values are used |
 | Mental overhead to remember names | Visual patterns emerge naturally |
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/proboscis/vscode-semantic-highlighting/main/extension/screenshots/large_func_example.png" alt="Large Function Example" width="700">
-</p>
+![Large Function Example](screenshots/large_func_example.png)
 
 ## ✨ Features
 
@@ -63,9 +59,7 @@ Fixed colors for Python keywords with full customization:
 
 ### 🔧 Visual Settings Panel
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/proboscis/vscode-semantic-highlighting/main/extension/screenshots/settings_pane.png" alt="Settings Panel" width="600">
-</p>
+![Settings Panel](screenshots/settings_pane.png)
 
 Beautiful settings UI with:
 - **Circular Hue Picker** — Intuitive color wheel for selecting hue ranges
