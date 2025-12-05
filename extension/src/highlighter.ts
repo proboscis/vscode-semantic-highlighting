@@ -10,7 +10,7 @@ export interface Occurrence {
 
 export interface SymbolEntry {
   name: string;
-  kind: 'variable' | 'function' | 'class' | 'parameter' | 'attribute' | 'keyword';
+  kind: 'variable' | 'function' | 'class' | 'parameter' | 'attribute' | 'keyword' | 'decorator' | 'type_annotation' | 'kwarg_name';
   occurrences: Occurrence[];
 }
 

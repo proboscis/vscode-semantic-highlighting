@@ -21,6 +21,7 @@ enum SymbolKind {
     Keyword,
     Decorator,
     TypeAnnotation,
+    KwargName,  // Keyword argument names in function calls: func(x=0) -> x
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -635,7 +636,8 @@ impl<'a> SymbolCollector<'a> {
 
     fn visit_keyword(&mut self, keyword: &ast::Keyword) {
         if let Some(arg) = &keyword.arg {
-            self.record_identifier_search(arg, SymbolKind::Attribute, keyword.range, None);
+            // Keyword argument name in function call: func(x=0) -> x is KwargName
+            self.record_identifier_search(arg, SymbolKind::KwargName, keyword.range, None);
         }
         self.visit_expr(&keyword.value);
     }

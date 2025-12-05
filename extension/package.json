@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.8.2",
+  "version": "0.9.0",
   "publisher": "proboscis",
   "engines": {
     "vscode": "^1.85.0"
@@ -59,7 +59,7 @@
         },
         "pythonSemanticHighlighter.semanticCategories": {
           "type": "object",
-          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`",
+          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`, `kwargName`",
           "default": {
             "localVariable": {
               "enabled": true,
@@ -138,6 +138,12 @@
               "hueRange": [220, 260],
               "saturation": [40, 60],
               "lightness": [55, 70]
+            },
+            "kwargName": {
+              "enabled": false,
+              "hueRange": [0, 360],
+              "saturation": [30, 40],
+              "lightness": [60, 70]
             }
           },
           "additionalProperties": {

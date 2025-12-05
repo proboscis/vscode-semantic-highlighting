@@ -15,7 +15,8 @@ type SemanticCategory =
   | 'typeAnnotation'
   | 'decorator'
   | 'self'
-  | 'builtin';
+  | 'builtin'
+  | 'kwargName';  // Keyword argument names in function calls: func(x=0)
 
 interface SemanticCategoryConfig {
   enabled: boolean;
@@ -93,6 +94,8 @@ function getSemanticCategory(name: string, kind: string): SemanticCategory | 'ke
       return 'parameter';
     case 'attribute':
       return 'attribute';
+    case 'kwarg_name':
+      return 'kwargName';
     case 'variable':
       // For now, treat as local variable (we can distinguish local/global later)
       return 'localVariable';
