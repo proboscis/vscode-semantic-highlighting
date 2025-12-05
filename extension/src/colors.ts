@@ -266,15 +266,13 @@ export function getColorForSymbol(name: string, kind: string): string | null {
     return null; // Disabled or not configured - let editor theme handle it
   }
   
-  // Use round-robin for local variables and parameters for better color variety
-  const useRoundRobin = category === 'localVariable' || category === 'parameter';
-  
+  // Use round-robin (van der Corput) for all categories for maximum color variety
   return generateHashColor(
     name,
     config.hueRange,
     config.saturation,
     config.lightness,
-    useRoundRobin
+    true  // Always use round-robin for maximum color distance
   );
 }
 
