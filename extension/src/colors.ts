@@ -114,6 +114,31 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
+// Golden angle in degrees - provides optimal color distribution
+const GOLDEN_ANGLE = 137.508;
+
+// Track variable indices for round-robin color assignment
+let variableIndexMap: Map<string, number> = new Map();
+let nextVariableIndex = 0;
+
+/**
+ * Reset variable index tracking (call when switching files)
+ */
+export function resetVariableIndices(): void {
+  variableIndexMap.clear();
+  nextVariableIndex = 0;
+}
+
+/**
+ * Get or assign an index for a variable name (for round-robin distribution)
+ */
+function getVariableIndex(name: string): number {
+  if (!variableIndexMap.has(name)) {
+    variableIndexMap.set(name, nextVariableIndex++);
+  }
+  return variableIndexMap.get(name)!;
+}
+
 /**
  * Convert HSL to hex color string
  */
@@ -136,24 +161,40 @@ function generateHashColor(
   name: string,
   hueRange: [number, number],
   saturationRange: [number, number],
-  lightnessRange: [number, number]
+  lightnessRange: [number, number],
+  useRoundRobin: boolean = false
 ): string {
-  const hash = hashCode(name);
+  let hue: number;
+  let saturation: number;
+  let lightness: number;
   
-  // Use different parts of the hash for each component
-  const hueHash = hash;
-  const satHash = (hash >> 8) & 0xFFFF;
-  const lightHash = (hash >> 16) & 0xFFFF;
-  
-  // Map hash to ranges
-  const hueSpan = hueRange[1] - hueRange[0];
-  const hue = hueRange[0] + (hueHash % Math.max(hueSpan, 1));
-  
-  const satSpan = saturationRange[1] - saturationRange[0];
-  const saturation = saturationRange[0] + (satHash % Math.max(satSpan, 1));
-  
-  const lightSpan = lightnessRange[1] - lightnessRange[0];
-  const lightness = lightnessRange[0] + (lightHash % Math.max(lightSpan, 1));
+  if (useRoundRobin) {
+    // Round-robin distribution using golden angle for optimal spread
+    const index = getVariableIndex(name);
+    hue = (index * GOLDEN_ANGLE) % 360;
+    
+    // Use hash for slight saturation/lightness variation
+    const hash = hashCode(name);
+    const satSpan = saturationRange[1] - saturationRange[0];
+    const lightSpan = lightnessRange[1] - lightnessRange[0];
+    saturation = saturationRange[0] + (hash % Math.max(satSpan, 1));
+    lightness = lightnessRange[0] + ((hash >> 8) % Math.max(lightSpan, 1));
+  } else {
+    // Hash-based distribution within specified hue range
+    const hash = hashCode(name);
+    const hueHash = hash;
+    const satHash = (hash >> 8) & 0xFFFF;
+    const lightHash = (hash >> 16) & 0xFFFF;
+    
+    const hueSpan = hueRange[1] - hueRange[0];
+    hue = hueRange[0] + (hueHash % Math.max(hueSpan, 1));
+    
+    const satSpan = saturationRange[1] - saturationRange[0];
+    saturation = saturationRange[0] + (satHash % Math.max(satSpan, 1));
+    
+    const lightSpan = lightnessRange[1] - lightnessRange[0];
+    lightness = lightnessRange[0] + (lightHash % Math.max(lightSpan, 1));
+  }
   
   return hslToHex(hue % 360, saturation, lightness);
 }
@@ -187,11 +228,15 @@ export function getColorForSymbol(name: string, kind: string): string | null {
     return null; // Disabled or not configured - let editor theme handle it
   }
   
+  // Use round-robin for local variables and parameters for better color variety
+  const useRoundRobin = category === 'localVariable' || category === 'parameter';
+  
   return generateHashColor(
     name,
     config.hueRange,
     config.saturation,
-    config.lightness
+    config.lightness,
+    useRoundRobin
   );
 }
 
@@ -207,6 +252,9 @@ export function createDecorations(
   symbols: SymbolEntry[],
   decorationCache: Map<string, vscode.TextEditorDecorationType>
 ): DecorationEntry[] {
+  // Reset variable indices for fresh round-robin distribution
+  resetVariableIndices();
+  
   const result: DecorationEntry[] = [];
   const rangesByColor = new Map<string, vscode.Range[]>();
 
