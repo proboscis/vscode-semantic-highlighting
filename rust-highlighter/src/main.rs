@@ -24,6 +24,7 @@ enum SymbolKind {
     KwargName,    // Keyword argument names in function calls: func(x=0) -> x
     MethodCall,   // Method calls: obj.method() -> method
     FunctionCall, // Function calls: func() -> func
+    Import,       // Imported module/name: import os, from x import y
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -379,7 +380,7 @@ impl<'a> SymbolCollector<'a> {
             ast::Stmt::ImportFrom(import_from) => {
                 let mut cursor = self.record_keyword("from", import_from.range, None);
                 if let Some(module) = &import_from.module {
-                    cursor = self.record_identifier_search(module, SymbolKind::Attribute, import_from.range, cursor);
+                    cursor = self.record_identifier_search(module, SymbolKind::Import, import_from.range, cursor);
                 }
                 cursor = self.record_keyword("import", import_from.range, cursor);
                 for alias in &import_from.names {
@@ -813,10 +814,10 @@ impl<'a> SymbolCollector<'a> {
     }
 
     fn visit_alias(&mut self, alias: &ast::Alias) {
-        let mut cursor = self.record_identifier_search(&alias.name, SymbolKind::Variable, alias.range, None);
+        let mut cursor = self.record_identifier_search(&alias.name, SymbolKind::Import, alias.range, None);
         if let Some(asname) = &alias.asname {
             cursor = self.record_keyword("as", alias.range, cursor);
-            self.record_identifier_search(asname, SymbolKind::Variable, alias.range, cursor);
+            self.record_identifier_search(asname, SymbolKind::Import, alias.range, cursor);
         }
     }
 

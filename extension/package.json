@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
@@ -80,7 +80,7 @@
         },
         "pythonSemanticHighlighter.semanticCategories": {
           "type": "object",
-          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`, `kwargName`",
+          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`, `kwargName`, `import`",
           "default": {
             "localVariable": {
               "enabled": true,
@@ -165,6 +165,12 @@
               "hueRange": [0, 360],
               "saturation": [40, 60],
               "lightness": [55, 70]
+            },
+            "import": {
+              "enabled": true,
+              "hueRange": [0, 360],
+              "saturation": [35, 55],
+              "lightness": [60, 75]
             }
           },
           "additionalProperties": {
