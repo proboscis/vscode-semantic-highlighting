@@ -85,9 +85,12 @@ function getSemanticCategory(name: string, kind: string): SemanticCategory | 'ke
     case 'type_annotation':
       return 'typeAnnotation';
     case 'function':
-      // First occurrence is definition, others are calls
-      // For now, treat all as functionCall (we can improve this later)
+      // Function definition
+      return 'functionDef';
+    case 'function_call':
       return 'functionCall';
+    case 'method_call':
+      return 'methodCall';
     case 'class':
       return 'classReference';
     case 'parameter':

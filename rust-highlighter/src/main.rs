@@ -21,7 +21,9 @@ enum SymbolKind {
     Keyword,
     Decorator,
     TypeAnnotation,
-    KwargName,  // Keyword argument names in function calls: func(x=0) -> x
+    KwargName,    // Keyword argument names in function calls: func(x=0) -> x
+    MethodCall,   // Method calls: obj.method() -> method
+    FunctionCall, // Function calls: func() -> func
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -493,7 +495,22 @@ impl<'a> SymbolCollector<'a> {
                 self.record_identifier_search(&attr.attr, SymbolKind::Attribute, attr.range, None);
             }
             ast::Expr::Call(call) => {
-                self.visit_expr(&call.func);
+                // Handle function/method calls specially
+                match call.func.as_ref() {
+                    ast::Expr::Name(name) => {
+                        // Direct function call: func()
+                        self.record_identifier_at_range(&name.id, SymbolKind::FunctionCall, name.range);
+                    }
+                    ast::Expr::Attribute(attr) => {
+                        // Method call: obj.method()
+                        self.visit_expr(&attr.value);
+                        self.record_identifier_search(&attr.attr, SymbolKind::MethodCall, attr.range, None);
+                    }
+                    _ => {
+                        // Complex expression like func()() or arr[0]()
+                        self.visit_expr(&call.func);
+                    }
+                }
                 for arg in &call.args {
                     self.visit_expr(arg);
                 }

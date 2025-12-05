@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
