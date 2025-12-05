@@ -1,136 +1,145 @@
-# Python Semantic Highlighter for VS Code
+# VS Code Python Semantic Highlighting
 
-IntelliJ風のセマンティックハイライト機能をVS Codeに提供するPython用拡張機能です。
+IntelliJ-style semantic highlighting for Python in VS Code.
 
-## 特徴
+## Overview
 
-- **シンボル単位の色分け**: 同じシンボル（変数、関数、クラス等）は常に同じ色で表示されます
-- **高速なAST解析**: Rust製パーサー（rustpython-parser）によるネイティブ速度の解析
-- **IntelliJ風の視認性**: シンボル名のハッシュに基づいた一貫性のある色付け
-- **キーワードの統一色**: `def`, `class`, `return`などのPythonキーワードは固定色で表示
+This VS Code extension provides semantic highlighting for Python code, where each symbol (variable, function, class, etc.) is colored based on its name. This makes it easy to visually track variables and identify patterns in your code.
 
-## 色付けルール
+**For user documentation, see [extension/README.md](extension/README.md)**
 
-### ファイル単位で一貫性を保つもの
-- ローカル変数 / グローバル変数
-- 関数名
-- クラス名
-- パラメータ
-- 属性（アトリビュート）
+## Project Structure
 
-### グローバルに統一されるもの
-- Pythonキーワード（`def`, `class`, `if`, `for`, `return`など）
-- Python組み込み関数（`print`, `len`, `range`など）
+```
+vscode-semantic-highlighting/
+├── extension/                    # VS Code extension (TypeScript)
+│   ├── src/
+│   │   ├── extension.ts          # Main extension entry point
+│   │   ├── highlighter.ts        # Rust binary invocation
+│   │   ├── colors.ts             # Color generation logic
+│   │   └── settingsPanel.ts      # WebView settings UI
+│   ├── bin/                      # Pre-built Rust binary (gitignored)
+│   ├── package.json              # Extension manifest
+│   └── README.md                 # User documentation
+│
+├── rust-highlighter/             # Rust AST parser
+│   ├── src/
+│   │   └── main.rs               # Symbol extraction from Python AST
+│   └── Cargo.toml
+│
+└── README.md                     # This file (developer docs)
+```
 
-## 必要要件
+## Development Setup
 
-- VS Code 1.85.0以上
-- Rust（cargo）- ビルド時に必要
+### Prerequisites
 
-## インストール
+- Node.js 18+
+- Rust toolchain (rustup)
+- VS Code
 
-### 開発版
+### Building
 
 ```bash
-# リポジトリをクローン
-git clone <repository-url>
+# Clone repository
+git clone https://github.com/proboscis/vscode-semantic-highlighting.git
 cd vscode-semantic-highlighting
 
-# Rustハイライターをビルド
+# Build Rust highlighter
 cd rust-highlighter
 cargo build --release
 cd ..
 
-# 拡張機能の依存関係をインストール
+# Copy binary to extension
+cp rust-highlighter/target/release/python-semantic-highlighter extension/bin/
+
+# Install extension dependencies
 cd extension
 npm install
 
-# TypeScriptをコンパイル
+# Build TypeScript
 npm run build
 ```
 
-VS Codeで拡張機能を実行するには：
-1. VS Codeでこのプロジェクトを開く
-2. `F5`を押してExtension Development Hostを起動
-3. 新しいウィンドウでPythonファイルを開く
+### Running in Development
 
-## 設定
+1. Open the project in VS Code
+2. Press `F5` to launch Extension Development Host
+3. Open a Python file in the new window
 
-| 設定項目 | 説明 | デフォルト |
-|---------|------|-----------|
-| `pythonSemanticHighlighter.enable` | ハイライト機能の有効/無効 | `true` |
-| `pythonSemanticHighlighter.debounceMs` | 編集後にハイライトを再実行するまでの遅延（ミリ秒） | `150` |
-
-## コマンド
-
-- **Python Semantic Highlighter: Refresh Semantic Highlighting** - 現在のファイルのハイライトを再実行
-- **Python Semantic Highlighter: Toggle Semantic Highlighting** - ハイライト機能の有効/無効を切り替え
-
-## アーキテクチャ
-
-```
-┌─────────────────────┐
-│   VS Code 拡張      │
-│   (TypeScript)      │
-└──────────┬──────────┘
-           │ subprocess
-           ▼
-┌─────────────────────┐
-│  Rustハイライター   │
-│  (rustpython-parser)│
-└──────────┬──────────┘
-           │ JSON
-           ▼
-┌─────────────────────┐
-│   シンボル情報      │
-│   { name, kind,     │
-│     occurrences }   │
-└─────────────────────┘
-```
-
-## 開発
-
-### ディレクトリ構成
-
-```
-vscode-semantic-highlighting/
-├── extension/              # VS Code拡張機能
-│   ├── src/
-│   │   ├── extension.ts    # エントリーポイント
-│   │   ├── highlighter.ts  # Rustバイナリ呼び出し
-│   │   └── colors.ts       # 色生成ロジック
-│   └── package.json
-├── rust-highlighter/       # Rustパーサー
-│   ├── src/
-│   │   └── main.rs         # AST解析・シンボル抽出
-│   └── Cargo.toml
-└── README.md
-```
-
-### ビルド
+### Packaging
 
 ```bash
-# Rustハイライターのビルド
-cd rust-highlighter
-cargo build --release
-
-# TypeScriptのコンパイル
-cd ../extension
-npm run build
+cd extension
+npm run package
+# Creates python-semantic-highlighter-x.x.x.vsix
 ```
 
-### テスト
+## Architecture
+
+### Rust Highlighter
+
+The Rust component (`rust-highlighter/`) parses Python source code using `rustpython-parser` and extracts:
+
+- Symbol names and their positions
+- Symbol types (variable, function, class, parameter, etc.)
+- Keyword positions
+
+Output is JSON:
+```json
+{
+  "symbols": [
+    {
+      "name": "my_variable",
+      "kind": "variable",
+      "occurrences": [
+        {"line": 0, "column": 0, "length": 11},
+        {"line": 5, "column": 4, "length": 11}
+      ]
+    }
+  ]
+}
+```
+
+### VS Code Extension
+
+The TypeScript extension (`extension/`):
+
+1. Invokes the Rust binary as a subprocess
+2. Parses the JSON output
+3. Generates colors based on symbol name hash and user configuration
+4. Applies VS Code TextEditor decorations
+
+### Color Generation
+
+Colors are generated using HSL color space:
+- **Hue**: Derived from symbol name hash
+- **Saturation/Lightness**: Configurable per category
+
+This ensures:
+- Same symbol name → same color (within a file)
+- Different names → visually distinct colors
+- Consistent palette across sessions
+
+## Testing
 
 ```bash
-# Rustのテスト
+# Rust tests
 cd rust-highlighter
 cargo test
 
-# Rustハイライターの動作確認
-./target/release/python-semantic-highlighter test.py
+# Manual testing
+./target/release/python-semantic-highlighter path/to/file.py
 ```
 
-## ライセンス
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests
+5. Submit a pull request
+
+## License
 
 MIT
-
