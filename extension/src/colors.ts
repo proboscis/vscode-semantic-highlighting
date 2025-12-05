@@ -114,9 +114,6 @@ function hashCode(str: string): number {
   return Math.abs(hash);
 }
 
-// Golden angle in degrees - provides optimal color distribution
-const GOLDEN_ANGLE = 137.508;
-
 // Track variable indices for round-robin color assignment
 let variableIndexMap: Map<string, number> = new Map();
 let nextVariableIndex = 0;
@@ -137,6 +134,44 @@ function getVariableIndex(name: string): number {
     variableIndexMap.set(name, nextVariableIndex++);
   }
   return variableIndexMap.get(name)!;
+}
+
+/**
+ * Van der Corput sequence - generates values between 0 and 1 with maximum separation
+ * Each new value is maximally distant from all previous values
+ * 
+ * Sequence: 0, 0.5, 0.25, 0.75, 0.125, 0.625, 0.375, 0.875, ...
+ */
+function vanDerCorput(n: number, base: number = 2): number {
+  let result = 0;
+  let fraction = 1 / base;
+  
+  while (n > 0) {
+    result += (n % base) * fraction;
+    n = Math.floor(n / base);
+    fraction /= base;
+  }
+  
+  return result;
+}
+
+/**
+ * Get a hue value within range using maximum-separation strategy
+ * Adjacent picks will be far apart in hue space
+ * 
+ * Example with range [0, 100] and indices 0,1,2,3,4,5,6,7:
+ *   0 → 0, 1 → 50, 2 → 25, 3 → 75, 4 → 12.5, 5 → 62.5, 6 → 37.5, 7 → 87.5
+ */
+function getDistributedHue(index: number, hueRange: [number, number]): number {
+  const rangeStart = hueRange[0];
+  const rangeEnd = hueRange[1];
+  const rangeSpan = rangeEnd - rangeStart;
+  
+  // Use van der Corput sequence for maximum separation
+  // Add 1 to index so first value isn't always at the start
+  const t = vanDerCorput(index + 1);
+  
+  return rangeStart + (t * rangeSpan);
 }
 
 /**
@@ -169,9 +204,9 @@ function generateHashColor(
   let lightness: number;
   
   if (useRoundRobin) {
-    // Round-robin distribution using golden angle for optimal spread
+    // Sequential round-robin with maximum separation using van der Corput sequence
     const index = getVariableIndex(name);
-    hue = (index * GOLDEN_ANGLE) % 360;
+    hue = getDistributedHue(index, hueRange);
     
     // Use hash for slight saturation/lightness variation
     const hash = hashCode(name);
