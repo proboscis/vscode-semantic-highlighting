@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "proboscis",
   "engines": {
     "vscode": "^1.85.0"
@@ -29,9 +29,19 @@
       {
         "command": "pythonSemanticHighlighter.openSettings",
         "title": "Open Settings Panel",
-        "category": "Python Semantic Highlighter"
+        "category": "Python Semantic Highlighter",
+        "icon": "$(gear)"
       }
     ],
+    "menus": {
+      "extension/context": [
+        {
+          "command": "pythonSemanticHighlighter.openSettings",
+          "group": "navigation",
+          "when": "extensionIdentifier == proboscis.python-semantic-highlighter"
+        }
+      ]
+    },
     "configuration": {
       "type": "object",
       "title": "Python Semantic Highlighter",
