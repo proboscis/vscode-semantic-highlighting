@@ -36,6 +36,7 @@ async function highlightDocument(
   }
 
   const filePath = document.uri.fsPath;
+  const documentKey = document.uri.toString();
   
   // Check if file exists on disk (not untitled)
   if (!fs.existsSync(filePath)) {
@@ -57,8 +58,15 @@ async function highlightDocument(
     const elapsed = Date.now() - startTime;
     outputChannel.appendLine(`Analysis completed in ${elapsed}ms, found ${result.symbols.length} symbols`);
 
-    // Apply decorations
-    applyDecorations(editor, result);
+    // Cache the result
+    analysisCache.set(documentKey, { result, timestamp: Date.now() });
+
+    // Apply decorations to ALL visible editors showing this document
+    for (const visibleEditor of vscode.window.visibleTextEditors) {
+      if (visibleEditor.document.uri.toString() === documentKey) {
+        applyDecorations(visibleEditor, result);
+      }
+    }
   } catch (error) {
     outputChannel.appendLine(`Error analyzing ${filePath}: ${error}`);
   }
@@ -102,15 +110,45 @@ function scheduleHighlight(document: vscode.TextDocument): void {
   // Schedule new highlight
   const timer = setTimeout(() => {
     debounceTimers.delete(key);
-    const editor = vscode.window.visibleTextEditors.find(
-      e => e.document.uri.toString() === key
-    );
-    if (editor) {
-      highlightDocument(document, editor);
+    // Apply to ALL visible editors showing this document (handles split views, peek)
+    for (const editor of vscode.window.visibleTextEditors) {
+      if (editor.document.uri.toString() === key) {
+        highlightDocument(document, editor);
+      }
     }
   }, getDebounceMs());
 
   debounceTimers.set(key, timer);
+}
+
+// Cache for analysis results to avoid re-analyzing for multiple editors
+let analysisCache: Map<string, { result: HighlighterOutput; timestamp: number }> = new Map();
+const CACHE_TTL_MS = 5000; // 5 seconds
+
+async function highlightEditorIfNeeded(editor: vscode.TextEditor): Promise<void> {
+  if (!isEnabled()) {
+    return;
+  }
+
+  const document = editor.document;
+  if (document.languageId !== 'python') {
+    return;
+  }
+
+  const key = document.uri.toString();
+  
+  // Check if we have cached analysis results
+  const cached = analysisCache.get(key);
+  const now = Date.now();
+  
+  if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+    // Use cached results
+    applyDecorations(editor, cached.result);
+    return;
+  }
+
+  // No cache or expired, schedule a highlight
+  scheduleHighlight(document);
 }
 
 function clearDocumentDecorations(documentUri: string): void {
@@ -152,6 +190,18 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor && editor.document.languageId === 'python') {
         scheduleHighlight(editor.document);
+      }
+    })
+  );
+
+  // Handle visible editors change (for peek definition, split editors, etc.)
+  context.subscriptions.push(
+    vscode.window.onDidChangeVisibleTextEditors((editors) => {
+      for (const editor of editors) {
+        if (editor.document.languageId === 'python') {
+          // Apply decorations to all visible Python editors
+          highlightEditorIfNeeded(editor);
+        }
       }
     })
   );
