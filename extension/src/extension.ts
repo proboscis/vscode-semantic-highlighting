@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getRustBinaryPath, analyzeFile, analyzeSource, HighlighterOutput } from './highlighter';
+import { getRustBinaryPath, analyzeSource, HighlighterOutput } from './highlighter';
 import { createDecorations, clearDecorationCache, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
@@ -38,26 +38,18 @@ async function highlightDocument(
   const filePath = document.uri.fsPath;
   const documentKey = document.uri.toString();
   const isNotebookCell = document.uri.scheme === 'vscode-notebook-cell';
-  const isUntitled = document.isUntitled;
-  const fileExists = !isNotebookCell && !isUntitled && fs.existsSync(filePath);
 
   outputChannel.appendLine(`Analyzing: ${isNotebookCell ? 'notebook cell' : filePath}`);
   const startTime = Date.now();
 
   try {
-    let result: HighlighterOutput | null;
-    
-    if (fileExists) {
-      // File exists on disk - use file path
-      result = await analyzeFile(filePath, binaryPath);
-    } else {
-      // Notebook cell, untitled, or unsaved - use document content via stdin
-      const source = document.getText();
-      if (!source.trim()) {
-        return; // Empty document
-      }
-      result = await analyzeSource(source, binaryPath);
+    // Always use document.getText() to get the current editor content
+    // This ensures unsaved changes are analyzed correctly
+    const source = document.getText();
+    if (!source.trim()) {
+      return; // Empty document
     }
+    const result = await analyzeSource(source, binaryPath);
     
     if (!result) {
       outputChannel.appendLine(`Analysis failed for ${isNotebookCell ? 'notebook cell' : filePath}`);
