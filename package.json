@@ -1,0 +1,17 @@
+{
+  "name": "vscode-semantic-highlighting",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "extension"
+  ],
+  "scripts": {
+    "bootstrap": "npm install --workspace extension",
+    "build": "npm run build --workspace extension",
+    "package": "npm run package --workspace extension",
+    "lint": "npm run lint --workspace extension",
+    "test": "npm run test --workspace extension"
+  }
+}
+
+

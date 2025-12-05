@@ -1,0 +1,10 @@
+**/.vscode
+**/.git
+**/.gitignore
+**/node_modules/**/*
+out/test
+src
+tsconfig.json
+.eslintrc.json
+
+

@@ -1,0 +1,70 @@
+{
+  "name": "python-semantic-highlighter",
+  "displayName": "Python Semantic Highlighter",
+  "description": "Semantic highlighting for Python inspired by IntelliJ",
+  "version": "0.0.1",
+  "publisher": "your-name",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "pythonSemanticHighlighter.refresh",
+        "title": "Refresh Semantic Highlighting",
+        "category": "Python Semantic Highlighter"
+      },
+      {
+        "command": "pythonSemanticHighlighter.toggle",
+        "title": "Toggle Semantic Highlighting",
+        "category": "Python Semantic Highlighter"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "Python Semantic Highlighter",
+      "properties": {
+        "pythonSemanticHighlighter.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Python semantic highlighter."
+        },
+        "pythonSemanticHighlighter.debounceMs": {
+          "type": "number",
+          "default": 150,
+          "description": "Delay in milliseconds before re-running the highlighter after edits."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "compile": "tsc -p ./",
+    "build": "npm run compile",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint . --ext ts",
+    "package": "vsce package",
+    "test": "echo \"No tests yet\"",
+    "build:rust": "cargo build --release --manifest-path ../rust-highlighter/Cargo.toml",
+    "postinstall": "npm run build:rust"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0",
+    "vsce": "^2.15.0"
+  },
+  "dependencies": {}
+}
+
+
