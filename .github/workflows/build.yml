@@ -1,0 +1,137 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-rust:
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: darwin-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            artifact: darwin-x64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: linux-x64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: linux-arm64
+            cross: true
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: win32-x64
+
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+      
+      - name: Install cross (Linux ARM64)
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+      
+      - name: Build (native)
+        if: "!matrix.cross"
+        working-directory: rust-highlighter
+        run: cargo build --release --target ${{ matrix.target }}
+      
+      - name: Build (cross)
+        if: matrix.cross
+        working-directory: rust-highlighter
+        run: cross build --release --target ${{ matrix.target }}
+      
+      - name: Prepare artifact (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p artifacts/${{ matrix.artifact }}
+          cp rust-highlighter/target/${{ matrix.target }}/release/python-semantic-highlighter artifacts/${{ matrix.artifact }}/
+      
+      - name: Prepare artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p artifacts/${{ matrix.artifact }}
+          cp rust-highlighter/target/${{ matrix.target }}/release/python-semantic-highlighter.exe artifacts/${{ matrix.artifact }}/
+        shell: bash
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.artifact }}
+          path: artifacts/${{ matrix.artifact }}
+
+  package-extension:
+    needs: build-rust
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: extension/bin
+          pattern: binary-*
+          merge-multiple: false
+      
+      - name: Organize binaries
+        run: |
+          cd extension/bin
+          for dir in binary-*; do
+            platform="${dir#binary-}"
+            mv "$dir" "$platform" 2>/dev/null || true
+          done
+          find . -type f | head -20
+      
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci
+      
+      - name: Build extension
+        working-directory: extension
+        run: npm run build
+      
+      - name: Package extension
+        working-directory: extension
+        run: npx vsce package --no-dependencies
+      
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: extension/*.vsix
+
+  release:
+    needs: package-extension
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Download VSIX
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix
+          path: ./
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: "*.vsix"
+          generate_release_notes: true
+

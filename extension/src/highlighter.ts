@@ -18,25 +18,49 @@ export interface HighlighterOutput {
   symbols: SymbolEntry[];
 }
 
+function getPlatformBinaryName(): { dir: string; name: string } {
+  const platform = process.platform;
+  const arch = process.arch;
+  
+  let dir: string;
+  let name: string;
+  
+  if (platform === 'win32') {
+    dir = arch === 'x64' ? 'win32-x64' : 'win32-arm64';
+    name = 'python-semantic-highlighter.exe';
+  } else if (platform === 'darwin') {
+    dir = arch === 'arm64' ? 'darwin-arm64' : 'darwin-x64';
+    name = 'python-semantic-highlighter';
+  } else {
+    // Linux
+    dir = arch === 'arm64' ? 'linux-arm64' : 'linux-x64';
+    name = 'python-semantic-highlighter';
+  }
+  
+  return { dir, name };
+}
+
 export function getRustBinaryPath(context: vscode.ExtensionContext): string {
   const extensionPath = context.extensionPath;
-  const binaryName = process.platform === 'win32'
-    ? 'python-semantic-highlighter.exe'
-    : 'python-semantic-highlighter';
+  const { dir, name } = getPlatformBinaryName();
+  const fs = require('fs');
   
-  // For packaged extension, binary is in extension's bin directory
-  const packagedPath = path.join(extensionPath, 'bin', binaryName);
+  // Try platform-specific directory first (for multi-platform package)
+  const platformPath = path.join(extensionPath, 'bin', dir, name);
+  if (fs.existsSync(platformPath)) {
+    return platformPath;
+  }
+  
+  // Fall back to flat bin directory (for single-platform package)
+  const flatPath = path.join(extensionPath, 'bin', name);
+  if (fs.existsSync(flatPath)) {
+    return flatPath;
+  }
   
   // For development, try the local Rust build
-  const releasePath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'release', binaryName);
-  const debugPath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'debug', binaryName);
+  const releasePath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'release', name);
+  const debugPath = path.join(extensionPath, '..', 'rust-highlighter', 'target', 'debug', name);
   
-  // Check packaged path first (for installed extension)
-  const fs = require('fs');
-  if (fs.existsSync(packagedPath)) {
-    return packagedPath;
-  }
-  // Then try development paths
   if (fs.existsSync(releasePath)) {
     return releasePath;
   }
@@ -44,8 +68,8 @@ export function getRustBinaryPath(context: vscode.ExtensionContext): string {
     return debugPath;
   }
   
-  // Default to packaged path (will show error if not found)
-  return packagedPath;
+  // Default to platform path (will show error if not found)
+  return platformPath;
 }
 
 export async function analyzeFile(

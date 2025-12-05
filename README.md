@@ -37,7 +37,7 @@ vscode-semantic-highlighting/
 - Rust toolchain (`rustup`)
 - VS Code 1.85+
 
-### Building
+### Building (Current Platform)
 
 ```bash
 # Clone repository
@@ -59,6 +59,39 @@ npm install
 # Build TypeScript
 npm run build
 ```
+
+### Building for Multiple Platforms
+
+The extension supports:
+- **macOS** (Apple Silicon & Intel)
+- **Linux** (x64 & ARM64)
+- **Windows** (x64)
+
+#### Using GitHub Actions (Recommended)
+
+Push a tag to trigger automatic builds for all platforms:
+```bash
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+#### Manual Cross-Compilation
+
+```bash
+# Install cross for cross-compilation
+cargo install cross
+
+# Run build script
+chmod +x scripts/build-all-platforms.sh
+./scripts/build-all-platforms.sh
+```
+
+The binaries will be placed in `extension/bin/{platform}/`:
+- `darwin-arm64/` - macOS Apple Silicon
+- `darwin-x64/` - macOS Intel
+- `linux-x64/` - Linux x64
+- `linux-arm64/` - Linux ARM64
+- `win32-x64/` - Windows x64
 
 ### Running in Development
 
