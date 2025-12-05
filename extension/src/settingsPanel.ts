@@ -37,6 +37,12 @@ export class SettingsPanel {
     this._panel.webview.onDidReceiveMessage(
       async (message) => {
         switch (message.command) {
+          case 'updateEnable':
+            await this._updateEnable(message.value);
+            break;
+          case 'updateDebounceMs':
+            await this._updateDebounceMs(message.value);
+            break;
           case 'updateSemanticCategory':
             await this._updateSemanticCategory(message.category, message.config);
             break;
@@ -66,6 +72,16 @@ export class SettingsPanel {
     );
   }
 
+  private async _updateEnable(value: boolean) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('enable', value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _updateDebounceMs(value: number) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('debounceMs', value, vscode.ConfigurationTarget.Global);
+  }
+
   private async _updateSemanticCategory(category: string, config: any) {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
     const categories = vsConfig.get<Record<string, any>>('semanticCategories', {});
@@ -89,11 +105,15 @@ export class SettingsPanel {
 
   private _sendCurrentSettings() {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    const enable = vsConfig.get('enable', true);
+    const debounceMs = vsConfig.get('debounceMs', 150);
     const semanticCategories = vsConfig.get('semanticCategories', {});
     const keywordColors = vsConfig.get('keywordColors', {});
     
     this._panel.webview.postMessage({
       command: 'settingsLoaded',
+      enable,
+      debounceMs,
       semanticCategories,
       keywordColors,
     });
@@ -324,6 +344,74 @@ export class SettingsPanel {
       flex: 1;
     }
     
+    /* General Settings */
+    .general-settings {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+    
+    .setting-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .setting-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    
+    .setting-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .debounce-control {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .debounce-control input[type="range"] {
+      width: 120px;
+      height: 6px;
+      -webkit-appearance: none;
+      background: var(--border-color);
+      border-radius: 3px;
+      outline: none;
+    }
+    
+    .debounce-control input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: var(--accent-color);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    
+    #debounce-value {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+      min-width: 50px;
+    }
+    
     .clear-btn {
       background: none;
       border: none;
@@ -350,6 +438,30 @@ export class SettingsPanel {
 <body>
   <h1>🎨 Python Semantic Highlighter</h1>
   <p class="subtitle">Configure colors for semantic highlighting. Changes apply immediately.</p>
+  
+  <h2>General Settings</h2>
+  <div class="general-settings">
+    <div class="setting-row">
+      <div class="setting-info">
+        <span class="setting-name">Enable Highlighter</span>
+        <span class="setting-desc">Turn semantic highlighting on/off</span>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="enable-toggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <span class="setting-name">Debounce Delay</span>
+        <span class="setting-desc">Delay before re-highlighting after edits (ms)</span>
+      </div>
+      <div class="debounce-control">
+        <input type="range" id="debounce-slider" min="50" max="500" value="150">
+        <span id="debounce-value">150ms</span>
+      </div>
+    </div>
+  </div>
   
   <h2>Semantic Categories</h2>
   <p class="subtitle">Hash-based coloring within HSV ranges. Toggle off to use IDE theme defaults.</p>
@@ -592,9 +704,32 @@ export class SettingsPanel {
       }
     }
     
+    // General settings handlers
+    const enableToggle = document.getElementById('enable-toggle');
+    const debounceSlider = document.getElementById('debounce-slider');
+    const debounceValue = document.getElementById('debounce-value');
+    
+    enableToggle.addEventListener('change', (e) => {
+      vscode.postMessage({ command: 'updateEnable', value: e.target.checked });
+    });
+    
+    debounceSlider.addEventListener('input', (e) => {
+      debounceValue.textContent = e.target.value + 'ms';
+    });
+    
+    debounceSlider.addEventListener('change', (e) => {
+      vscode.postMessage({ command: 'updateDebounceMs', value: parseInt(e.target.value) });
+    });
+    
     window.addEventListener('message', event => {
       const message = event.data;
       if (message.command === 'settingsLoaded') {
+        // Update general settings
+        enableToggle.checked = message.enable !== false;
+        debounceSlider.value = message.debounceMs || 150;
+        debounceValue.textContent = (message.debounceMs || 150) + 'ms';
+        
+        // Update categories
         currentSettings.semanticCategories = { ...defaultCategories };
         for (const [key, val] of Object.entries(message.semanticCategories || {})) {
           currentSettings.semanticCategories[key] = { ...defaultCategories[key], ...val };
