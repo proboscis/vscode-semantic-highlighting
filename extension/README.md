@@ -89,10 +89,16 @@ Works seamlessly with `.ipynb` files:
 3. Search for "Python Semantic Highlighter"
 4. Click Install
 
-### From VSIX
-1. Download the `.vsix` file from [Releases](https://github.com/proboscis/vscode-semantic-highlighting/releases)
-2. In VS Code: `Cmd+Shift+P` → `Extensions: Install from VSIX...`
-3. Select the downloaded file
+### From VSIX (GitHub Releases)
+1. Go to the [Latest Release](https://github.com/proboscis/vscode-semantic-highlighting/releases/latest)
+2. Download `python-semantic-highlighter-x.x.x.vsix`
+3. In VS Code: `Cmd+Shift+P` / `Ctrl+Shift+P` → `Extensions: Install from VSIX...`
+4. Select the downloaded file
+
+> **💡 Tip:** You can also install directly from the command line:
+> ```bash
+> code --install-extension python-semantic-highlighter-x.x.x.vsix
+> ```
 
 ### Supported Platforms
 | Platform | Architecture |
