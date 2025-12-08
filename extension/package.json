@@ -2,8 +2,8 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.6.2",
-  "publisher": "proboscis",
+  "version": "1.6.3",
+  "publisher": "Proboscis",
   "repository": {
     "type": "git",
     "url": "https://github.com/proboscis/vscode-semantic-highlighting"
@@ -60,7 +60,7 @@
         {
           "command": "pythonSemanticHighlighter.openSettings",
           "group": "navigation",
-          "when": "extensionIdentifier == proboscis.python-semantic-highlighter"
+          "when": "extensionIdentifier == Proboscis.python-semantic-highlighter"
         }
       ]
     },

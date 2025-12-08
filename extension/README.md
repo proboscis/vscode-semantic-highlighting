@@ -89,7 +89,7 @@ Works seamlessly with `.ipynb` files:
 3. Search for **"Python Semantic Highlighter"**
 4. Click Install
 
-Or install directly: [View on Marketplace](https://marketplace.visualstudio.com/items?itemName=proboscis.python-semantic-highlighter)
+Or install directly: [View on Marketplace](https://marketplace.visualstudio.com/items?itemName=Proboscis.python-semantic-highlighter)
 
 ### From GitHub Releases
 1. Go to the [Latest Release](https://github.com/proboscis/vscode-semantic-highlighting/releases/latest)
