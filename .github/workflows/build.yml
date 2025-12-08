@@ -101,7 +101,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: extension
-        run: npm ci
+        run: npm install
       
       - name: Build extension
         working-directory: extension
