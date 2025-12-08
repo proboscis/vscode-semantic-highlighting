@@ -313,6 +313,24 @@
             "type": "string",
             "description": "Builtin name to disable"
           }
+        },
+        "pythonSemanticHighlighter.themeKeywordHues": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Hue values of your theme's keyword colors (e.g., `def`, `if`, `return`). These hues will be excluded from symbol coloring.\n\n**Common presets:**\n- Purple/Magenta (One Dark, Dracula): `[300]`\n- Orange (Monokai): `[30]`\n- Blue (Solarized): `[220]`\n\n**Example:**\n```json\n[300, 30]\n```\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 360,
+            "description": "Hue value (0-360)"
+          }
+        },
+        "pythonSemanticHighlighter.themeKeywordHueRange": {
+          "type": "number",
+          "default": 25,
+          "minimum": 5,
+          "maximum": 60,
+          "markdownDescription": "The range (in degrees) around each theme keyword hue to exclude. For example, if hue is 300 and range is 25, hues 275-325 will be excluded.\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**"
         }
       }
     }

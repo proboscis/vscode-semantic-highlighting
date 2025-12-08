@@ -124,6 +124,16 @@ function getManualExcludedHueRanges(): [number, number][] {
   return config.get<[number, number][]>('excludedHueRanges', []);
 }
 
+function getThemeKeywordHues(): number[] {
+  const config = getConfig();
+  return config.get<number[]>('themeKeywordHues', []);
+}
+
+function getThemeKeywordHueRange(): number {
+  const config = getConfig();
+  return config.get<number>('themeKeywordHueRange', 25);
+}
+
 // Cache for excluded hue ranges to avoid recalculating on every color generation
 let cachedExcludedRanges: [number, number][] | null = null;
 
@@ -145,7 +155,23 @@ function getExcludedHueRanges(): [number, number][] {
   }
 
   const excludedRanges: [number, number][] = [];
-  
+
+  // Helper to add exclusion range with wraparound handling
+  function addExclusionRange(hue: number, range: number): void {
+    const minHue = hue - range;
+    const maxHue = hue + range;
+
+    if (minHue < 0) {
+      excludedRanges.push([0, maxHue]);
+      excludedRanges.push([360 + minHue, 360]);
+    } else if (maxHue > 360) {
+      excludedRanges.push([minHue, 360]);
+      excludedRanges.push([0, maxHue - 360]);
+    } else {
+      excludedRanges.push([minHue, maxHue]);
+    }
+  }
+
   // Add manual excluded ranges
   const manualRanges = getManualExcludedHueRanges();
   for (const range of manualRanges) {
@@ -153,35 +179,31 @@ function getExcludedHueRanges(): [number, number][] {
       excludedRanges.push([range[0], range[1]]);
     }
   }
-  
-  // Add keyword color hue ranges if enabled
+
+  // Add theme keyword hues (user-specified hues for their theme's keywords)
+  const themeKeywordHues = getThemeKeywordHues();
+  const themeHueRange = getThemeKeywordHueRange();
+  for (const hue of themeKeywordHues) {
+    if (typeof hue === 'number' && hue >= 0 && hue <= 360) {
+      addExclusionRange(hue, themeHueRange);
+    }
+  }
+
+  // Add keyword color hue ranges if enabled (from keywordColors setting)
   if (getExcludeKeywordHues()) {
     const keywordColors = getKeywordColors();
     const exclusionRange = getKeywordHueExclusionRange();
-    
+
     for (const color of Object.values(keywordColors)) {
       if (color && color !== '') {
         const hsl = hexToHsl(color);
         if (hsl !== null) {
-          // Create exclusion range around the keyword hue
-          const minHue = hsl.h - exclusionRange;
-          const maxHue = hsl.h + exclusionRange;
-          
-          // Handle wraparound: if range crosses 0/360 boundary, split into two ranges
-          if (minHue < 0) {
-            excludedRanges.push([0, maxHue]);
-            excludedRanges.push([360 + minHue, 360]);
-          } else if (maxHue > 360) {
-            excludedRanges.push([minHue, 360]);
-            excludedRanges.push([0, maxHue - 360]);
-          } else {
-            excludedRanges.push([minHue, maxHue]);
-          }
+          addExclusionRange(hsl.h, exclusionRange);
         }
       }
     }
   }
-  
+
   cachedExcludedRanges = excludedRanges;
   return excludedRanges;
 }

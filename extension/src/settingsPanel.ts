@@ -67,6 +67,12 @@ export class SettingsPanel {
           case 'updateDisabledBuiltins':
             await this._updateDisabledBuiltins(message.value);
             break;
+          case 'updateThemeKeywordHues':
+            await this._updateThemeKeywordHues(message.value);
+            break;
+          case 'updateThemeKeywordHueRange':
+            await this._updateThemeKeywordHueRange(message.value);
+            break;
           case 'getSettings':
             this._sendCurrentSettings();
             break;
@@ -143,6 +149,16 @@ export class SettingsPanel {
     await vsConfig.update('disabledBuiltins', value, vscode.ConfigurationTarget.Global);
   }
 
+  private async _updateThemeKeywordHues(value: number[]) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('themeKeywordHues', value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _updateThemeKeywordHueRange(value: number) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('themeKeywordHueRange', value, vscode.ConfigurationTarget.Global);
+  }
+
   private _sendCurrentSettings() {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
     const enable = vsConfig.get('enable', true);
@@ -154,6 +170,8 @@ export class SettingsPanel {
     const excludedHueRanges = vsConfig.get('excludedHueRanges', []);
     const additionalBuiltins = vsConfig.get('additionalBuiltins', []);
     const disabledBuiltins = vsConfig.get('disabledBuiltins', []);
+    const themeKeywordHues = vsConfig.get('themeKeywordHues', []);
+    const themeKeywordHueRange = vsConfig.get('themeKeywordHueRange', 25);
     
     this._panel.webview.postMessage({
       command: 'settingsLoaded',
@@ -166,6 +184,8 @@ export class SettingsPanel {
       excludedHueRanges,
       additionalBuiltins,
       disabledBuiltins,
+      themeKeywordHues,
+      themeKeywordHueRange,
     });
   }
 
@@ -660,11 +680,19 @@ export class SettingsPanel {
     }
     
     .exclusion-range-item.auto {
-      border-left: 3px solid var(--accent-color);
+      border-left: 3px solid #9b59b6;
     }
     
     .exclusion-range-item.manual {
       border-left: 3px solid #e67e22;
+    }
+    
+    .exclusion-range-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--border-color);
+      padding: 2px 6px;
+      border-radius: 3px;
     }
     
     .exclusion-range-color {
@@ -742,6 +770,121 @@ export class SettingsPanel {
       color: var(--text-muted);
       font-size: 13px;
       font-style: italic;
+    }
+    
+    /* Theme Keyword Hues Section */
+    .theme-hues-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+    
+    .theme-hue-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    .theme-preset-btn {
+      padding: 6px 12px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-color);
+      cursor: pointer;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .theme-preset-btn:hover {
+      border-color: var(--accent-color);
+    }
+    
+    .theme-preset-btn.active {
+      border-color: var(--accent-color);
+      background: rgba(14, 99, 156, 0.2);
+    }
+    
+    .preset-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .theme-hue-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    
+    .theme-hue-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    .theme-hue-tag .hue-color-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .theme-hue-tag .remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1;
+    }
+    
+    .theme-hue-tag .remove-btn:hover {
+      color: var(--danger-color);
+    }
+    
+    .add-hue-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 12px;
+    }
+    
+    .add-hue-form input[type="number"] {
+      width: 80px;
+      padding: 6px 10px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-color);
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    .add-hue-form button {
+      padding: 6px 12px;
+      background: var(--accent-color);
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .add-hue-form button:hover {
+      background: var(--accent-hover);
     }
     
     /* Builtins Section */
@@ -960,6 +1103,55 @@ export class SettingsPanel {
         <button class="add-exclusion-btn" id="add-exclusion-btn">+ Add Manual Exclusion Range</button>
       </div>
     </div>
+    
+    <div class="theme-hues-section">
+      <div class="setting-name" style="margin-bottom: 8px;">Theme Keyword Hues</div>
+      <p class="setting-desc">Select the hue(s) your theme uses for keywords like <code>def</code>, <code>if</code>, <code>return</code>. These will be excluded from symbol coloring.</p>
+      
+      <div class="theme-hue-presets">
+        <button class="theme-preset-btn" data-preset="purple" data-hue="300">
+          <span class="preset-color-dot" style="background: hsl(300, 60%, 60%)"></span>
+          Purple/Magenta
+        </button>
+        <button class="theme-preset-btn" data-preset="orange" data-hue="30">
+          <span class="preset-color-dot" style="background: hsl(30, 60%, 60%)"></span>
+          Orange
+        </button>
+        <button class="theme-preset-btn" data-preset="blue" data-hue="220">
+          <span class="preset-color-dot" style="background: hsl(220, 60%, 60%)"></span>
+          Blue
+        </button>
+        <button class="theme-preset-btn" data-preset="red" data-hue="0">
+          <span class="preset-color-dot" style="background: hsl(0, 60%, 60%)"></span>
+          Red
+        </button>
+        <button class="theme-preset-btn" data-preset="cyan" data-hue="180">
+          <span class="preset-color-dot" style="background: hsl(180, 60%, 60%)"></span>
+          Cyan
+        </button>
+      </div>
+      
+      <div class="setting-row" style="border: none; padding: 8px 0;">
+        <div class="setting-info">
+          <span class="setting-name" style="font-size: 13px;">Exclusion Range</span>
+          <span class="setting-desc">Range around each hue to exclude (±degrees)</span>
+        </div>
+        <div class="debounce-control">
+          <input type="range" id="theme-hue-range-slider" min="5" max="60" value="25">
+          <span id="theme-hue-range-value">±25°</span>
+        </div>
+      </div>
+      
+      <div class="setting-name" style="font-size: 13px; margin-top: 8px;">Active Theme Hues</div>
+      <div id="theme-hue-list" class="theme-hue-list"></div>
+      
+      <div class="add-hue-form">
+        <span style="color: var(--text-muted); font-size: 12px;">Custom:</span>
+        <input type="number" id="add-theme-hue-input" min="0" max="360" placeholder="0-360">
+        <span style="color: var(--text-muted);">°</span>
+        <button id="add-theme-hue-btn">Add</button>
+      </div>
+    </div>
   </div>
   
   <h2>Semantic Categories</h2>
@@ -1068,7 +1260,9 @@ export class SettingsPanel {
       keywordHueExclusionRange: 20,
       excludedHueRanges: [],
       additionalBuiltins: [],
-      disabledBuiltins: []
+      disabledBuiltins: [],
+      themeKeywordHues: [],
+      themeKeywordHueRange: 25
     };
     
     const defaultBuiltins = [
@@ -1118,27 +1312,41 @@ export class SettingsPanel {
     
     function getAutoExcludedRanges() {
       const ranges = [];
-      if (!currentSettings.excludeKeywordHues) return ranges;
       
-      const exclusionRange = currentSettings.keywordHueExclusionRange;
-      for (const [keyword, color] of Object.entries(currentSettings.keywordColors)) {
-        if (color && color !== '') {
-          const hue = hexToHsl(color);
-          if (hue !== null) {
-            let minHue = hue - exclusionRange;
-            let maxHue = hue + exclusionRange;
-            if (minHue < 0) {
-              ranges.push({ min: 0, max: maxHue, keyword, color, auto: true });
-              ranges.push({ min: 360 + minHue, max: 360, keyword, color, auto: true });
-            } else if (maxHue > 360) {
-              ranges.push({ min: minHue, max: 360, keyword, color, auto: true });
-              ranges.push({ min: 0, max: maxHue - 360, keyword, color, auto: true });
-            } else {
-              ranges.push({ min: minHue, max: maxHue, keyword, color, auto: true });
+      // Helper to add range with wraparound
+      function addRange(hue, range, label, type) {
+        let minHue = hue - range;
+        let maxHue = hue + range;
+        if (minHue < 0) {
+          ranges.push({ min: 0, max: maxHue, label, type, hue });
+          ranges.push({ min: 360 + minHue, max: 360, label, type, hue });
+        } else if (maxHue > 360) {
+          ranges.push({ min: minHue, max: 360, label, type, hue });
+          ranges.push({ min: 0, max: maxHue - 360, label, type, hue });
+        } else {
+          ranges.push({ min: minHue, max: maxHue, label, type, hue });
+        }
+      }
+      
+      // Add theme keyword hues
+      const themeHueRange = currentSettings.themeKeywordHueRange;
+      for (const hue of currentSettings.themeKeywordHues) {
+        addRange(hue, themeHueRange, 'theme ' + hue + '°', 'theme');
+      }
+      
+      // Add keyword colors (if enabled)
+      if (currentSettings.excludeKeywordHues) {
+        const exclusionRange = currentSettings.keywordHueExclusionRange;
+        for (const [keyword, color] of Object.entries(currentSettings.keywordColors)) {
+          if (color && color !== '') {
+            const hue = hexToHsl(color);
+            if (hue !== null) {
+              addRange(hue, exclusionRange, keyword, 'keyword');
             }
           }
         }
       }
+      
       return ranges;
     }
     
@@ -1147,7 +1355,8 @@ export class SettingsPanel {
       const manualRanges = (currentSettings.excludedHueRanges || []).map(r => ({
         min: r[0],
         max: r[1],
-        auto: false
+        type: 'manual',
+        label: 'manual'
       }));
       return [...autoRanges, ...manualRanges];
     }
@@ -1191,19 +1400,17 @@ export class SettingsPanel {
       }
       
       let listHtml = '';
+      let manualIndex = 0;
       for (let i = 0; i < allRanges.length; i++) {
         const range = allRanges[i];
         const midHue = (range.min + range.max) / 2;
         const bgColor = hslToHex(midHue, 60, 50);
         
-        listHtml += '<div class="exclusion-range-item ' + (range.auto ? 'auto' : 'manual') + '">';
+        const typeClass = range.type === 'manual' ? 'manual' : 'auto';
+        listHtml += '<div class="exclusion-range-item ' + typeClass + '">';
         listHtml += '<div class="exclusion-range-color" style="background: ' + bgColor + '"></div>';
-        
-        if (range.auto) {
-          listHtml += '<span class="exclusion-range-text">' + Math.round(range.min) + '° - ' + Math.round(range.max) + '°</span>';
-          listHtml += '<span class="exclusion-range-label">' + range.keyword + '</span>';
-        } else {
-          const manualIndex = i - getAutoExcludedRanges().length;
+
+        if (range.type === 'manual') {
           listHtml += '<div class="exclusion-range-inputs">';
           listHtml += '<input type="number" min="0" max="360" value="' + Math.round(range.min) + '" data-manual-index="' + manualIndex + '" data-field="min" title="Min hue">°';
           listHtml += '<span>-</span>';
@@ -1211,6 +1418,10 @@ export class SettingsPanel {
           listHtml += '</div>';
           listHtml += '<span class="exclusion-range-label">manual</span>';
           listHtml += '<button class="exclusion-range-delete" data-manual-index="' + manualIndex + '" title="Remove">✕</button>';
+          manualIndex++;
+        } else {
+          listHtml += '<span class="exclusion-range-text">' + Math.round(range.min) + '° - ' + Math.round(range.max) + '°</span>';
+          listHtml += '<span class="exclusion-range-label">' + range.label + '</span>';
         }
         listHtml += '</div>';
       }
@@ -1355,6 +1566,98 @@ export class SettingsPanel {
       addDisabledBtn.addEventListener('click', addDisabled);
       addDisabledInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addDisabled();
+      });
+    }
+    
+    function renderThemeKeywordHues() {
+      const list = document.getElementById('theme-hue-list');
+      const presetBtns = document.querySelectorAll('.theme-preset-btn');
+      
+      // Update preset button states
+      presetBtns.forEach(btn => {
+        const hue = parseInt(btn.dataset.hue);
+        const isActive = currentSettings.themeKeywordHues.includes(hue);
+        btn.classList.toggle('active', isActive);
+      });
+      
+      // Render hue list
+      if (currentSettings.themeKeywordHues.length === 0) {
+        list.innerHTML = '<span class="no-exclusions">No theme hues selected. Click presets above or add custom hue.</span>';
+        return;
+      }
+      
+      let html = '';
+      for (let i = 0; i < currentSettings.themeKeywordHues.length; i++) {
+        const hue = currentSettings.themeKeywordHues[i];
+        html += '<span class="theme-hue-tag">' +
+          '<span class="hue-color-dot" style="background: hsl(' + hue + ', 60%, 60%)"></span>' +
+          hue + '°' +
+          '<button class="remove-btn" data-index="' + i + '">✕</button>' +
+          '</span>';
+      }
+      list.innerHTML = html;
+      
+      // Add remove handlers
+      list.querySelectorAll('.remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.dataset.index);
+          currentSettings.themeKeywordHues.splice(index, 1);
+          vscode.postMessage({ command: 'updateThemeKeywordHues', value: currentSettings.themeKeywordHues });
+          renderThemeKeywordHues();
+          renderExclusionVisualization();
+        });
+      });
+    }
+    
+    function setupThemeKeywordHuesHandlers() {
+      const presetBtns = document.querySelectorAll('.theme-preset-btn');
+      const addInput = document.getElementById('add-theme-hue-input');
+      const addBtn = document.getElementById('add-theme-hue-btn');
+      const rangeSlider = document.getElementById('theme-hue-range-slider');
+      const rangeValue = document.getElementById('theme-hue-range-value');
+      
+      // Preset button handlers
+      presetBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const hue = parseInt(btn.dataset.hue);
+          const index = currentSettings.themeKeywordHues.indexOf(hue);
+          if (index === -1) {
+            currentSettings.themeKeywordHues.push(hue);
+          } else {
+            currentSettings.themeKeywordHues.splice(index, 1);
+          }
+          vscode.postMessage({ command: 'updateThemeKeywordHues', value: currentSettings.themeKeywordHues });
+          renderThemeKeywordHues();
+          renderExclusionVisualization();
+        });
+      });
+      
+      // Range slider handler
+      rangeSlider.addEventListener('input', (e) => {
+        rangeValue.textContent = '±' + e.target.value + '°';
+      });
+      
+      rangeSlider.addEventListener('change', (e) => {
+        currentSettings.themeKeywordHueRange = parseInt(e.target.value);
+        vscode.postMessage({ command: 'updateThemeKeywordHueRange', value: parseInt(e.target.value) });
+        renderExclusionVisualization();
+      });
+      
+      // Add custom hue handler
+      function addCustomHue() {
+        const value = parseInt(addInput.value);
+        if (!isNaN(value) && value >= 0 && value <= 360 && !currentSettings.themeKeywordHues.includes(value)) {
+          currentSettings.themeKeywordHues.push(value);
+          vscode.postMessage({ command: 'updateThemeKeywordHues', value: currentSettings.themeKeywordHues });
+          addInput.value = '';
+          renderThemeKeywordHues();
+          renderExclusionVisualization();
+        }
+      }
+      
+      addBtn.addEventListener('click', addCustomHue);
+      addInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addCustomHue();
       });
     }
     
@@ -1768,10 +2071,22 @@ export class SettingsPanel {
         currentSettings.keywordColors = message.keywordColors || {};
         currentSettings.additionalBuiltins = message.additionalBuiltins || [];
         currentSettings.disabledBuiltins = message.disabledBuiltins || [];
+        currentSettings.themeKeywordHues = message.themeKeywordHues || [];
+        currentSettings.themeKeywordHueRange = message.themeKeywordHueRange || 25;
+        
+        // Update theme hue range slider
+        const themeHueRangeSlider = document.getElementById('theme-hue-range-slider');
+        const themeHueRangeValue = document.getElementById('theme-hue-range-value');
+        if (themeHueRangeSlider) {
+          themeHueRangeSlider.value = currentSettings.themeKeywordHueRange;
+          themeHueRangeValue.textContent = '±' + currentSettings.themeKeywordHueRange + '°';
+        }
+        
         renderSemanticCategories();
         renderKeywordColors();
         renderExclusionVisualization();
         renderBuiltins();
+        renderThemeKeywordHues();
       }
     });
     
@@ -1779,7 +2094,9 @@ export class SettingsPanel {
     renderKeywordColors();
     renderExclusionVisualization();
     renderBuiltins();
+    renderThemeKeywordHues();
     setupBuiltinsHandlers();
+    setupThemeKeywordHuesHandlers();
     vscode.postMessage({ command: 'getSettings' });
   </script>
 </body>
