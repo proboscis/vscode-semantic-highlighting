@@ -29,6 +29,8 @@ enum SymbolKind {
     Fstring,      // F-strings: f"hello {name}"
     RawString,    // Raw strings: r"hello\n"
     ByteString,   // Byte strings: b"hello"
+    Comment,      // Comments: # this is a comment
+    Docstring,    // Docstrings: """This is a docstring"""
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -97,6 +99,8 @@ struct SymbolCollector<'a> {
     symbols: HashMap<SymbolKey, Vec<Occurrence>>,
     /// Stack of parameter names in current scope (for tracking function parameters)
     param_scopes: Vec<std::collections::HashSet<String>>,
+    /// Track string literal positions that are docstrings (to avoid marking them as regular strings)
+    docstring_positions: std::collections::HashSet<(usize, usize)>,
 }
 
 impl<'a> SymbolCollector<'a> {
@@ -106,6 +110,139 @@ impl<'a> SymbolCollector<'a> {
             lines,
             symbols: HashMap::new(),
             param_scopes: Vec::new(),
+            docstring_positions: std::collections::HashSet::new(),
+        }
+    }
+
+    /// Extract and record all comments from source code
+    /// Comments start with # and continue to end of line
+    fn extract_comments(&mut self) {
+        let mut in_string = false;
+        let mut string_char: char = '"';
+        let mut triple_quoted = false;
+        let mut i = 0;
+        let chars: Vec<char> = self.source.chars().collect();
+        let len = chars.len();
+
+        while i < len {
+            let ch = chars[i];
+
+            // Handle string literals (to avoid false comment detection inside strings)
+            if !in_string {
+                // Check for triple-quoted string
+                if (ch == '"' || ch == '\'') && i + 2 < len && chars[i + 1] == ch && chars[i + 2] == ch {
+                    // Check for string prefix (r, f, b, etc.)
+                    let has_prefix = i > 0 && matches!(chars[i - 1], 'r' | 'R' | 'f' | 'F' | 'b' | 'B' | 'u' | 'U');
+                    if !has_prefix || i == 0 || !chars[i - 1].is_alphanumeric() {
+                        in_string = true;
+                        string_char = ch;
+                        triple_quoted = true;
+                        i += 3;
+                        continue;
+                    }
+                }
+                // Check for single-quoted string
+                if ch == '"' || ch == '\'' {
+                    in_string = true;
+                    string_char = ch;
+                    triple_quoted = false;
+                    i += 1;
+                    continue;
+                }
+                // Check for comment
+                if ch == '#' {
+                    let comment_start = i;
+                    // Find end of line
+                    while i < len && chars[i] != '\n' {
+                        i += 1;
+                    }
+                    let comment_end = i;
+                    
+                    // Record the comment
+                    let byte_start = chars[..comment_start].iter().map(|c| c.len_utf8()).sum();
+                    let byte_end = chars[..comment_end].iter().map(|c| c.len_utf8()).sum();
+                    let occurrence = self.occurrence_from_span(byte_start, byte_end);
+                    self.insert_occurrence("__comment__", SymbolKind::Comment, occurrence);
+                    continue;
+                }
+            } else {
+                // Inside string - look for end of string
+                if triple_quoted {
+                    if ch == string_char && i + 2 < len && chars[i + 1] == string_char && chars[i + 2] == string_char {
+                        in_string = false;
+                        triple_quoted = false;
+                        i += 3;
+                        continue;
+                    }
+                } else {
+                    // Handle escape character
+                    if ch == '\\' && i + 1 < len {
+                        i += 2;
+                        continue;
+                    }
+                    if ch == string_char {
+                        in_string = false;
+                    }
+                    // Single-quoted strings can't span lines (unless escaped)
+                    if ch == '\n' {
+                        in_string = false;
+                    }
+                }
+            }
+            i += 1;
+        }
+    }
+
+    /// Check if a statement is a potential docstring (expression statement with string literal)
+    fn check_and_record_docstring(&mut self, stmt: &ast::Stmt) -> bool {
+        if let ast::Stmt::Expr(expr_stmt) = stmt {
+            if let ast::Expr::Constant(constant) = expr_stmt.value.as_ref() {
+                if let ast::Constant::Str(_) = &constant.value {
+                    // This is a docstring
+                    let range = constant.range;
+                    let start: usize = range.start().into();
+                    let end: usize = range.end().into();
+                    if start < end && start < self.source.len() {
+                        let end = cmp::min(end, self.source.len());
+                        // Mark this position as a docstring to avoid duplicate recording as string
+                        self.docstring_positions.insert((start, end));
+                        let occurrence = self.occurrence_from_span(start, end);
+                        self.insert_occurrence("__docstring__", SymbolKind::Docstring, occurrence);
+                        return true;
+                    }
+                }
+            }
+            // Also check for JoinedStr (f-string docstrings, though rare)
+            if let ast::Expr::JoinedStr(joined) = expr_stmt.value.as_ref() {
+                let range = joined.range;
+                let start: usize = range.start().into();
+                let end: usize = range.end().into();
+                if start < end && start < self.source.len() {
+                    let end = cmp::min(end, self.source.len());
+                    self.docstring_positions.insert((start, end));
+                    let occurrence = self.occurrence_from_span(start, end);
+                    self.insert_occurrence("__docstring__", SymbolKind::Docstring, occurrence);
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Visit a suite (list of statements), checking for leading docstring
+    fn visit_suite_with_docstring(&mut self, suite: &[ast::Stmt]) {
+        let mut iter = suite.iter();
+        
+        // Check first statement for docstring
+        if let Some(first) = iter.next() {
+            if !self.check_and_record_docstring(first) {
+                self.visit_stmt(first);
+            }
+        }
+        
+        // Visit remaining statements
+        for stmt in iter {
+            self.visit_stmt(stmt);
         }
     }
 
@@ -158,9 +295,8 @@ impl<'a> SymbolCollector<'a> {
                 for type_param in &func.type_params {
                     self.visit_type_param(type_param);
                 }
-                for inner in &func.body {
-                    self.visit_stmt(inner);
-                }
+                // Check for docstring in function body
+                self.visit_suite_with_docstring(&func.body);
                 self.pop_param_scope();
             }
             ast::Stmt::AsyncFunctionDef(func) => {
@@ -182,9 +318,8 @@ impl<'a> SymbolCollector<'a> {
                 for type_param in &func.type_params {
                     self.visit_type_param(type_param);
                 }
-                for inner in &func.body {
-                    self.visit_stmt(inner);
-                }
+                // Check for docstring in function body
+                self.visit_suite_with_docstring(&func.body);
                 self.pop_param_scope();
             }
             ast::Stmt::ClassDef(class_def) => {
@@ -199,9 +334,8 @@ impl<'a> SymbolCollector<'a> {
                 for keyword in &class_def.keywords {
                     self.visit_keyword(keyword);
                 }
-                for inner in &class_def.body {
-                    self.visit_stmt(inner);
-                }
+                // Check for docstring in class body
+                self.visit_suite_with_docstring(&class_def.body);
             }
             ast::Stmt::Return(ret) => {
                 self.record_keyword("return", ret.range, None);
@@ -978,6 +1112,11 @@ impl<'a> SymbolCollector<'a> {
         }
         let end = cmp::min(end, self.source.len());
         
+        // Check if this is already recorded as a docstring
+        if self.docstring_positions.contains(&(start, end)) {
+            return;
+        }
+        
         // Get the string literal text to check for prefix
         let literal_text = &self.source[start..end];
         
@@ -1011,6 +1150,11 @@ impl<'a> SymbolCollector<'a> {
             return;
         }
         let end = cmp::min(end, self.source.len());
+        
+        // Check if this is already recorded as a docstring
+        if self.docstring_positions.contains(&(start, end)) {
+            return;
+        }
         
         let occurrence = self.occurrence_from_span(start, end);
         self.insert_occurrence("__string__", SymbolKind::Fstring, occurrence);
@@ -1110,7 +1254,13 @@ fn main() -> Result<()> {
     // Use original source for position calculations
     let line_index = LineIndex::new(&source);
     let mut collector = SymbolCollector::new(&source, &line_index);
-    collector.visit_suite(&suite);
+    
+    // Extract comments first (they're not part of the AST)
+    collector.extract_comments();
+    
+    // Check for module-level docstring (first statement)
+    collector.visit_suite_with_docstring(&suite);
+    
     let output = collector.into_output();
     serde_json::to_writer(std::io::stdout(), &output)?;
     Ok(())

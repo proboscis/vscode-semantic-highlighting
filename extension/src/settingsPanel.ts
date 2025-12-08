@@ -105,21 +105,21 @@ export class SettingsPanel {
 
   private async _updateSemanticCategory(category: string, config: any) {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
-    const categories = vsConfig.get<Record<string, any>>('semanticCategories', {});
+    const categories = { ...vsConfig.get<Record<string, any>>('semanticCategories', {}) };
     categories[category] = { ...categories[category], ...config };
     await vsConfig.update('semanticCategories', categories, vscode.ConfigurationTarget.Global);
   }
 
   private async _updateKeywordColor(keyword: string, color: string) {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
-    const colors = vsConfig.get<Record<string, string>>('keywordColors', {});
+    const colors = { ...vsConfig.get<Record<string, string>>('keywordColors', {}) };
     colors[keyword] = color;
     await vsConfig.update('keywordColors', colors, vscode.ConfigurationTarget.Global);
   }
 
   private async _clearKeywordColor(keyword: string) {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
-    const colors = vsConfig.get<Record<string, string>>('keywordColors', {});
+    const colors = { ...vsConfig.get<Record<string, string>>('keywordColors', {}) };
     delete colors[keyword];
     await vsConfig.update('keywordColors', colors, vscode.ConfigurationTarget.Global);
   }
@@ -886,7 +886,71 @@ export class SettingsPanel {
     .add-hue-form button:hover {
       background: var(--accent-hover);
     }
-    
+
+    .eyedropper-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--card-bg);
+      border: 1px solid var(--accent-color);
+      border-radius: 6px;
+      color: var(--accent-color);
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s ease;
+    }
+
+    .eyedropper-btn:hover {
+      background: var(--accent-color);
+      color: #fff;
+    }
+
+    .eyedropper-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .eyedropper-result {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .eyedropper-result.visible {
+      display: flex;
+    }
+
+    .eyedropper-result .picked-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .eyedropper-result button {
+      margin-left: auto;
+      padding: 4px 10px;
+      background: var(--accent-color);
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 11px;
+    }
+
+    .eyedropper-unsupported {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
     /* Builtins Section */
     .builtins-section {
       background: var(--card-bg);
@@ -1131,6 +1195,27 @@ export class SettingsPanel {
         </button>
       </div>
       
+      <div style="margin: 12px 0;">
+        <button id="eyedropper-btn" class="eyedropper-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 22l1-1h3l9-9"/>
+            <path d="M3 21v-3l9-9"/>
+            <path d="M14.5 5.5l4 4"/>
+            <path d="M18.5 1.5a2.12 2.12 0 013 3l-1 1-4-4 1-1z"/>
+          </svg>
+          Pick color from screen
+        </button>
+        <span id="eyedropper-unsupported" class="eyedropper-unsupported" style="display: none;">
+          (EyeDropper not supported in this environment)
+        </span>
+        <div id="eyedropper-result" class="eyedropper-result">
+          <span class="picked-color" id="picked-color-preview"></span>
+          <span>Hue: <strong id="picked-hue-value">0</strong>°</span>
+          <span style="color: var(--text-muted);" id="picked-hex-value">#000000</span>
+          <button id="add-picked-hue-btn">Add this hue</button>
+        </div>
+      </div>
+      
       <div class="setting-row" style="border: none; padding: 8px 0;">
         <div class="setting-info">
           <span class="setting-name" style="font-size: 13px;">Exclusion Range</span>
@@ -1219,7 +1304,9 @@ export class SettingsPanel {
       stringLiteral: 'String Literal',
       fstringLiteral: 'F-String',
       rawStringLiteral: 'Raw String',
-      byteStringLiteral: 'Byte String'
+      byteStringLiteral: 'Byte String',
+      comment: 'Comment (# ...)',
+      docstring: 'Docstring ("""...""")'
     };
     
     const defaultCategories = {
@@ -1241,7 +1328,9 @@ export class SettingsPanel {
       stringLiteral: { enabled: false, hueRange: [80, 120], saturation: [40, 60], lightness: [50, 65] },
       fstringLiteral: { enabled: false, hueRange: [30, 60], saturation: [45, 65], lightness: [55, 70] },
       rawStringLiteral: { enabled: false, hueRange: [180, 220], saturation: [40, 60], lightness: [50, 65] },
-      byteStringLiteral: { enabled: false, hueRange: [270, 310], saturation: [40, 60], lightness: [50, 65] }
+      byteStringLiteral: { enabled: false, hueRange: [270, 310], saturation: [40, 60], lightness: [50, 65] },
+      comment: { enabled: false, hueRange: [90, 130], saturation: [20, 40], lightness: [45, 60] },
+      docstring: { enabled: false, hueRange: [100, 140], saturation: [30, 50], lightness: [50, 65] }
     };
     
     const keywords = [
@@ -1659,6 +1748,71 @@ export class SettingsPanel {
       addInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') addCustomHue();
       });
+      
+      // Eyedropper handler
+      const eyedropperBtn = document.getElementById('eyedropper-btn');
+      const eyedropperUnsupported = document.getElementById('eyedropper-unsupported');
+      const eyedropperResult = document.getElementById('eyedropper-result');
+      const pickedColorPreview = document.getElementById('picked-color-preview');
+      const pickedHueValue = document.getElementById('picked-hue-value');
+      const pickedHexValue = document.getElementById('picked-hex-value');
+      const addPickedHueBtn = document.getElementById('add-picked-hue-btn');
+      
+      // Check if EyeDropper is supported
+      if (!window.EyeDropper) {
+        eyedropperBtn.style.display = 'none';
+        eyedropperUnsupported.style.display = 'inline';
+      } else {
+        let lastPickedHue = null;
+        
+        eyedropperBtn.addEventListener('click', async () => {
+          try {
+            const eyeDropper = new EyeDropper();
+            const result = await eyeDropper.open();
+            const hex = result.sRGBHex;
+            
+            // Convert hex to HSL
+            const r = parseInt(hex.slice(1, 3), 16) / 255;
+            const g = parseInt(hex.slice(3, 5), 16) / 255;
+            const b = parseInt(hex.slice(5, 7), 16) / 255;
+            
+            const max = Math.max(r, g, b);
+            const min = Math.min(r, g, b);
+            let h = 0;
+            
+            if (max !== min) {
+              const d = max - min;
+              switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                case g: h = ((b - r) / d + 2) / 6; break;
+                case b: h = ((r - g) / d + 4) / 6; break;
+              }
+            }
+            
+            const hue = Math.round(h * 360);
+            lastPickedHue = hue;
+            
+            // Show result
+            pickedColorPreview.style.background = hex;
+            pickedHueValue.textContent = hue;
+            pickedHexValue.textContent = hex;
+            eyedropperResult.classList.add('visible');
+          } catch (e) {
+            // User cancelled or error
+            console.log('EyeDropper cancelled or error:', e);
+          }
+        });
+        
+        addPickedHueBtn.addEventListener('click', () => {
+          if (lastPickedHue !== null && !currentSettings.themeKeywordHues.includes(lastPickedHue)) {
+            currentSettings.themeKeywordHues.push(lastPickedHue);
+            vscode.postMessage({ command: 'updateThemeKeywordHues', value: currentSettings.themeKeywordHues });
+            renderThemeKeywordHues();
+            renderExclusionVisualization();
+            eyedropperResult.classList.remove('visible');
+          }
+        });
+      }
     }
     
     function renderSemanticCategories() {

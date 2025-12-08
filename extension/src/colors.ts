@@ -21,7 +21,9 @@ type SemanticCategory =
   | 'stringLiteral'      // Normal string literals: "hello", 'hello'
   | 'fstringLiteral'     // F-strings: f"hello {name}"
   | 'rawStringLiteral'   // Raw strings: r"hello\n"
-  | 'byteStringLiteral'; // Byte strings: b"hello"
+  | 'byteStringLiteral'  // Byte strings: b"hello"
+  | 'comment'            // Comments: # this is a comment
+  | 'docstring';         // Docstrings: """This is a docstring"""
 
 interface SemanticCategoryConfig {
   enabled: boolean;
@@ -278,6 +280,10 @@ function getSemanticCategory(name: string, kind: string): SemanticCategory | 'ke
       return 'rawStringLiteral';
     case 'byte_string':
       return 'byteStringLiteral';
+    case 'comment':
+      return 'comment';
+    case 'docstring':
+      return 'docstring';
     case 'variable':
       // For now, treat as local variable (we can distinguish local/global later)
       return 'localVariable';
