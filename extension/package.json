@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
@@ -294,6 +294,24 @@
             "minItems": 2,
             "maxItems": 2,
             "description": "Hue range [min, max] (0-360)"
+          }
+        },
+        "pythonSemanticHighlighter.additionalBuiltins": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Additional names to treat as Python builtins (will use the 'builtin' category color).\n\n**Example:**\n```json\n[\"numpy\", \"pandas\", \"torch\"]\n```\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**",
+          "items": {
+            "type": "string",
+            "description": "Name to treat as builtin"
+          }
+        },
+        "pythonSemanticHighlighter.disabledBuiltins": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Default builtin names to NOT treat as builtins (will use normal variable coloring instead).\n\n**Example:**\n```json\n[\"print\", \"len\"]\n```\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**",
+          "items": {
+            "type": "string",
+            "description": "Builtin name to disable"
           }
         }
       }

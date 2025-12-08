@@ -30,8 +30,8 @@ interface SemanticCategoryConfig {
   lightness: [number, number];
 }
 
-// Python builtins
-const PYTHON_BUILTINS = new Set([
+// Default Python builtins
+const DEFAULT_PYTHON_BUILTINS = [
   'abs', 'aiter', 'all', 'any', 'anext', 'ascii', 'bin', 'bool', 'breakpoint',
   'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex',
   'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter',
@@ -45,7 +45,52 @@ const PYTHON_BUILTINS = new Set([
   'Exception', 'BaseException', 'ValueError', 'TypeError', 'KeyError',
   'IndexError', 'AttributeError', 'ImportError', 'RuntimeError', 'StopIteration',
   'OSError', 'IOError', 'FileNotFoundError', 'PermissionError', 'ZeroDivisionError',
-]);
+];
+
+// Cache for the computed builtins set
+let cachedBuiltinsSet: Set<string> | null = null;
+
+/**
+ * Clear the builtins cache (call when settings change)
+ */
+export function clearBuiltinsCache(): void {
+  cachedBuiltinsSet = null;
+}
+
+/**
+ * Get the effective builtins set (default + additional - disabled)
+ */
+function getBuiltinsSet(): Set<string> {
+  if (cachedBuiltinsSet !== null) {
+    return cachedBuiltinsSet;
+  }
+  
+  const config = getConfig();
+  const additionalBuiltins = config.get<string[]>('additionalBuiltins', []);
+  const disabledBuiltins = config.get<string[]>('disabledBuiltins', []);
+  const disabledSet = new Set(disabledBuiltins);
+  
+  // Start with defaults, remove disabled, add additional
+  const builtins = new Set<string>();
+  for (const name of DEFAULT_PYTHON_BUILTINS) {
+    if (!disabledSet.has(name)) {
+      builtins.add(name);
+    }
+  }
+  for (const name of additionalBuiltins) {
+    builtins.add(name);
+  }
+  
+  cachedBuiltinsSet = builtins;
+  return builtins;
+}
+
+/**
+ * Check if a name is a Python builtin
+ */
+function isBuiltin(name: string): boolean {
+  return getBuiltinsSet().has(name);
+}
 
 /**
  * Get configuration from VS Code settings
@@ -176,7 +221,7 @@ function getSemanticCategory(name: string, kind: string): SemanticCategory | 'ke
   }
 
   // Check for builtins (only for variables)
-  if (kind === 'variable' && PYTHON_BUILTINS.has(name)) {
+  if (kind === 'variable' && isBuiltin(name)) {
     return 'builtin';
   }
 

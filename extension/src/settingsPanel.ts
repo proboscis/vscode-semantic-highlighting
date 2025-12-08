@@ -61,6 +61,12 @@ export class SettingsPanel {
           case 'updateExcludedHueRanges':
             await this._updateExcludedHueRanges(message.value);
             break;
+          case 'updateAdditionalBuiltins':
+            await this._updateAdditionalBuiltins(message.value);
+            break;
+          case 'updateDisabledBuiltins':
+            await this._updateDisabledBuiltins(message.value);
+            break;
           case 'getSettings':
             this._sendCurrentSettings();
             break;
@@ -127,6 +133,16 @@ export class SettingsPanel {
     await vsConfig.update('excludedHueRanges', value, vscode.ConfigurationTarget.Global);
   }
 
+  private async _updateAdditionalBuiltins(value: string[]) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('additionalBuiltins', value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _updateDisabledBuiltins(value: string[]) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('disabledBuiltins', value, vscode.ConfigurationTarget.Global);
+  }
+
   private _sendCurrentSettings() {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
     const enable = vsConfig.get('enable', true);
@@ -136,6 +152,8 @@ export class SettingsPanel {
     const excludeKeywordHues = vsConfig.get('excludeKeywordHues', true);
     const keywordHueExclusionRange = vsConfig.get('keywordHueExclusionRange', 20);
     const excludedHueRanges = vsConfig.get('excludedHueRanges', []);
+    const additionalBuiltins = vsConfig.get('additionalBuiltins', []);
+    const disabledBuiltins = vsConfig.get('disabledBuiltins', []);
     
     this._panel.webview.postMessage({
       command: 'settingsLoaded',
@@ -146,6 +164,8 @@ export class SettingsPanel {
       excludeKeywordHues,
       keywordHueExclusionRange,
       excludedHueRanges,
+      additionalBuiltins,
+      disabledBuiltins,
     });
   }
 
@@ -723,6 +743,156 @@ export class SettingsPanel {
       font-size: 13px;
       font-style: italic;
     }
+    
+    /* Builtins Section */
+    .builtins-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .builtins-subsection {
+      margin-top: 16px;
+    }
+    
+    .builtins-subsection-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .builtins-subsection-title .count {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+    
+    .builtins-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    
+    .builtin-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    .builtin-tag.additional {
+      border-color: #98c379;
+      background: rgba(152, 195, 121, 0.1);
+    }
+    
+    .builtin-tag.disabled {
+      border-color: var(--danger-color);
+      background: rgba(241, 76, 76, 0.1);
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    
+    .builtin-tag .remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0;
+      font-size: 12px;
+      line-height: 1;
+    }
+    
+    .builtin-tag .remove-btn:hover {
+      color: var(--danger-color);
+    }
+    
+    .add-builtin-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .add-builtin-form input {
+      flex: 1;
+      padding: 6px 10px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-color);
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    .add-builtin-form input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+    
+    .add-builtin-form button {
+      padding: 6px 12px;
+      background: var(--accent-color);
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .add-builtin-form button:hover {
+      background: var(--accent-hover);
+    }
+    
+    .default-builtins-toggle {
+      margin-top: 12px;
+    }
+    
+    .default-builtins-list {
+      max-height: 150px;
+      overflow-y: auto;
+      padding: 8px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+    
+    .default-builtin-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 6px;
+      margin: 2px;
+      background: var(--card-bg);
+      border-radius: 3px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    
+    .default-builtin-item:hover {
+      background: var(--border-color);
+    }
+    
+    .default-builtin-item.disabled {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    
+    .default-builtin-item input {
+      margin: 0;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -796,6 +966,41 @@ export class SettingsPanel {
   <p class="subtitle">Hash-based coloring within HSV ranges. Toggle off to use IDE theme defaults.</p>
   <div id="semantic-categories"></div>
   
+  <h2>Builtins</h2>
+  <p class="subtitle">Configure which names are treated as Python builtins (colored using the 'builtin' category).</p>
+  <div class="builtins-section">
+    <div class="builtins-subsection">
+      <div class="builtins-subsection-title">
+        Additional Builtins <span class="count" id="additional-count">(0)</span>
+      </div>
+      <p class="setting-desc">Names to add as builtins (e.g., numpy, pandas, torch)</p>
+      <div id="additional-builtins-list" class="builtins-list"></div>
+      <div class="add-builtin-form">
+        <input type="text" id="add-additional-input" placeholder="Enter name...">
+        <button id="add-additional-btn">Add</button>
+      </div>
+    </div>
+    
+    <div class="builtins-subsection">
+      <div class="builtins-subsection-title">
+        Disabled Builtins <span class="count" id="disabled-count">(0)</span>
+      </div>
+      <p class="setting-desc">Default builtins to disable (will use normal variable coloring)</p>
+      <div id="disabled-builtins-list" class="builtins-list"></div>
+      <div class="add-builtin-form">
+        <input type="text" id="add-disabled-input" placeholder="Enter name...">
+        <button id="add-disabled-btn">Add</button>
+      </div>
+    </div>
+    
+    <div class="builtins-subsection default-builtins-toggle">
+      <details>
+        <summary style="cursor: pointer; color: var(--text-muted); font-size: 13px;">View/Edit Default Builtins</summary>
+        <div id="default-builtins-list" class="default-builtins-list"></div>
+      </details>
+    </div>
+  </div>
+  
   <h2>Keyword Colors</h2>
   <p class="subtitle">Click color swatch to set custom color. Click ✕ to reset to theme default.</p>
   <div id="keyword-colors" class="keyword-grid"></div>
@@ -861,8 +1066,26 @@ export class SettingsPanel {
       keywordColors: {},
       excludeKeywordHues: true,
       keywordHueExclusionRange: 20,
-      excludedHueRanges: []
+      excludedHueRanges: [],
+      additionalBuiltins: [],
+      disabledBuiltins: []
     };
+    
+    const defaultBuiltins = [
+      'abs', 'aiter', 'all', 'any', 'anext', 'ascii', 'bin', 'bool', 'breakpoint',
+      'bytearray', 'bytes', 'callable', 'chr', 'classmethod', 'compile', 'complex',
+      'delattr', 'dict', 'dir', 'divmod', 'enumerate', 'eval', 'exec', 'filter',
+      'float', 'format', 'frozenset', 'getattr', 'globals', 'hasattr', 'hash',
+      'help', 'hex', 'id', 'input', 'int', 'isinstance', 'issubclass', 'iter',
+      'len', 'list', 'locals', 'map', 'max', 'memoryview', 'min', 'next', 'object',
+      'oct', 'open', 'ord', 'pow', 'print', 'property', 'range', 'repr', 'reversed',
+      'round', 'set', 'setattr', 'slice', 'sorted', 'staticmethod', 'str', 'sum',
+      'super', 'tuple', 'type', 'vars', 'zip', '__import__',
+      'None', 'True', 'False', 'Ellipsis', 'NotImplemented',
+      'Exception', 'BaseException', 'ValueError', 'TypeError', 'KeyError',
+      'IndexError', 'AttributeError', 'ImportError', 'RuntimeError', 'StopIteration',
+      'OSError', 'IOError', 'FileNotFoundError', 'PermissionError', 'ZeroDivisionError'
+    ];
     
     function hslToHex(h, s, l) {
       s /= 100; l /= 100;
@@ -975,18 +1198,39 @@ export class SettingsPanel {
         
         listHtml += '<div class="exclusion-range-item ' + (range.auto ? 'auto' : 'manual') + '">';
         listHtml += '<div class="exclusion-range-color" style="background: ' + bgColor + '"></div>';
-        listHtml += '<span class="exclusion-range-text">' + Math.round(range.min) + '° - ' + Math.round(range.max) + '°</span>';
         
         if (range.auto) {
+          listHtml += '<span class="exclusion-range-text">' + Math.round(range.min) + '° - ' + Math.round(range.max) + '°</span>';
           listHtml += '<span class="exclusion-range-label">' + range.keyword + '</span>';
         } else {
           const manualIndex = i - getAutoExcludedRanges().length;
+          listHtml += '<div class="exclusion-range-inputs">';
+          listHtml += '<input type="number" min="0" max="360" value="' + Math.round(range.min) + '" data-manual-index="' + manualIndex + '" data-field="min" title="Min hue">°';
+          listHtml += '<span>-</span>';
+          listHtml += '<input type="number" min="0" max="360" value="' + Math.round(range.max) + '" data-manual-index="' + manualIndex + '" data-field="max" title="Max hue">°';
+          listHtml += '</div>';
           listHtml += '<span class="exclusion-range-label">manual</span>';
           listHtml += '<button class="exclusion-range-delete" data-manual-index="' + manualIndex + '" title="Remove">✕</button>';
         }
         listHtml += '</div>';
       }
       list.innerHTML = listHtml;
+      
+      // Add input change handlers for manual ranges
+      list.querySelectorAll('.exclusion-range-inputs input').forEach(input => {
+        input.addEventListener('change', (e) => {
+          const index = parseInt(e.target.dataset.manualIndex);
+          const field = e.target.dataset.field;
+          const value = parseInt(e.target.value) || 0;
+          if (field === 'min') {
+            currentSettings.excludedHueRanges[index][0] = Math.max(0, Math.min(360, value));
+          } else {
+            currentSettings.excludedHueRanges[index][1] = Math.max(0, Math.min(360, value));
+          }
+          vscode.postMessage({ command: 'updateExcludedHueRanges', value: currentSettings.excludedHueRanges });
+          renderExclusionVisualization();
+        });
+      });
       
       // Add delete handlers
       list.querySelectorAll('.exclusion-range-delete').forEach(btn => {
@@ -996,6 +1240,121 @@ export class SettingsPanel {
           vscode.postMessage({ command: 'updateExcludedHueRanges', value: currentSettings.excludedHueRanges });
           renderExclusionVisualization();
         });
+      });
+    }
+    
+    function renderBuiltins() {
+      // Render additional builtins
+      const additionalList = document.getElementById('additional-builtins-list');
+      const additionalCount = document.getElementById('additional-count');
+      additionalCount.textContent = '(' + currentSettings.additionalBuiltins.length + ')';
+      
+      let additionalHtml = '';
+      for (let i = 0; i < currentSettings.additionalBuiltins.length; i++) {
+        const name = currentSettings.additionalBuiltins[i];
+        additionalHtml += '<span class="builtin-tag additional">' + name + 
+          '<button class="remove-btn" data-type="additional" data-index="' + i + '">✕</button></span>';
+      }
+      additionalList.innerHTML = additionalHtml || '<span class="no-exclusions">No additional builtins</span>';
+      
+      // Render disabled builtins
+      const disabledList = document.getElementById('disabled-builtins-list');
+      const disabledCount = document.getElementById('disabled-count');
+      disabledCount.textContent = '(' + currentSettings.disabledBuiltins.length + ')';
+      
+      let disabledHtml = '';
+      for (let i = 0; i < currentSettings.disabledBuiltins.length; i++) {
+        const name = currentSettings.disabledBuiltins[i];
+        disabledHtml += '<span class="builtin-tag disabled">' + name + 
+          '<button class="remove-btn" data-type="disabled" data-index="' + i + '">✕</button></span>';
+      }
+      disabledList.innerHTML = disabledHtml || '<span class="no-exclusions">No disabled builtins</span>';
+      
+      // Render default builtins list
+      const defaultList = document.getElementById('default-builtins-list');
+      let defaultHtml = '';
+      const disabledSet = new Set(currentSettings.disabledBuiltins);
+      for (const name of defaultBuiltins) {
+        const isDisabled = disabledSet.has(name);
+        defaultHtml += '<label class="default-builtin-item' + (isDisabled ? ' disabled' : '') + '">' +
+          '<input type="checkbox" ' + (isDisabled ? '' : 'checked') + ' data-builtin="' + name + '">' +
+          name + '</label>';
+      }
+      defaultList.innerHTML = defaultHtml;
+      
+      // Add event handlers for remove buttons
+      document.querySelectorAll('.builtin-tag .remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const type = e.target.dataset.type;
+          const index = parseInt(e.target.dataset.index);
+          if (type === 'additional') {
+            currentSettings.additionalBuiltins.splice(index, 1);
+            vscode.postMessage({ command: 'updateAdditionalBuiltins', value: currentSettings.additionalBuiltins });
+          } else {
+            currentSettings.disabledBuiltins.splice(index, 1);
+            vscode.postMessage({ command: 'updateDisabledBuiltins', value: currentSettings.disabledBuiltins });
+          }
+          renderBuiltins();
+        });
+      });
+      
+      // Add event handlers for default builtin checkboxes
+      defaultList.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+          const name = e.target.dataset.builtin;
+          if (e.target.checked) {
+            // Remove from disabled list
+            const index = currentSettings.disabledBuiltins.indexOf(name);
+            if (index !== -1) {
+              currentSettings.disabledBuiltins.splice(index, 1);
+              vscode.postMessage({ command: 'updateDisabledBuiltins', value: currentSettings.disabledBuiltins });
+            }
+          } else {
+            // Add to disabled list
+            if (!currentSettings.disabledBuiltins.includes(name)) {
+              currentSettings.disabledBuiltins.push(name);
+              vscode.postMessage({ command: 'updateDisabledBuiltins', value: currentSettings.disabledBuiltins });
+            }
+          }
+          renderBuiltins();
+        });
+      });
+    }
+    
+    function setupBuiltinsHandlers() {
+      const addAdditionalInput = document.getElementById('add-additional-input');
+      const addAdditionalBtn = document.getElementById('add-additional-btn');
+      const addDisabledInput = document.getElementById('add-disabled-input');
+      const addDisabledBtn = document.getElementById('add-disabled-btn');
+      
+      function addAdditional() {
+        const value = addAdditionalInput.value.trim();
+        if (value && !currentSettings.additionalBuiltins.includes(value)) {
+          currentSettings.additionalBuiltins.push(value);
+          vscode.postMessage({ command: 'updateAdditionalBuiltins', value: currentSettings.additionalBuiltins });
+          addAdditionalInput.value = '';
+          renderBuiltins();
+        }
+      }
+      
+      function addDisabled() {
+        const value = addDisabledInput.value.trim();
+        if (value && !currentSettings.disabledBuiltins.includes(value)) {
+          currentSettings.disabledBuiltins.push(value);
+          vscode.postMessage({ command: 'updateDisabledBuiltins', value: currentSettings.disabledBuiltins });
+          addDisabledInput.value = '';
+          renderBuiltins();
+        }
+      }
+      
+      addAdditionalBtn.addEventListener('click', addAdditional);
+      addAdditionalInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addAdditional();
+      });
+      
+      addDisabledBtn.addEventListener('click', addDisabled);
+      addDisabledInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') addDisabled();
       });
     }
     
@@ -1407,15 +1766,20 @@ export class SettingsPanel {
           currentSettings.semanticCategories[key] = { ...defaultCategories[key], ...val };
         }
         currentSettings.keywordColors = message.keywordColors || {};
+        currentSettings.additionalBuiltins = message.additionalBuiltins || [];
+        currentSettings.disabledBuiltins = message.disabledBuiltins || [];
         renderSemanticCategories();
         renderKeywordColors();
         renderExclusionVisualization();
+        renderBuiltins();
       }
     });
     
     renderSemanticCategories();
     renderKeywordColors();
     renderExclusionVisualization();
+    renderBuiltins();
+    setupBuiltinsHandlers();
     vscode.postMessage({ command: 'getSettings' });
   </script>
 </body>
