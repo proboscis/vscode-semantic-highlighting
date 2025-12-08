@@ -24,6 +24,32 @@ IntelliJ-style semantic highlighting for Python in VS Code. Each symbol gets a u
 
 **👉 For full user documentation, see [extension/README.md](extension/README.md)**
 
+## 📦 Installation
+
+### From VS Code Marketplace
+1. Open VS Code
+2. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
+3. Search for **"Python Semantic Highlighter"**
+4. Click Install
+
+### From VSIX (GitHub Releases)
+1. Go to the [Latest Release](https://github.com/proboscis/vscode-semantic-highlighting/releases/latest)
+2. Download `python-semantic-highlighter-x.x.x.vsix`
+3. In VS Code: `Cmd+Shift+P` / `Ctrl+Shift+P` → `Extensions: Install from VSIX...`
+4. Select the downloaded file
+
+> **💡 Tip:** You can also install directly from the command line:
+> ```bash
+> code --install-extension python-semantic-highlighter-x.x.x.vsix
+> ```
+
+### Supported Platforms
+| Platform | Architecture |
+|----------|--------------|
+| macOS | Apple Silicon (arm64), Intel (x64) |
+| Linux | x64, arm64 |
+| Windows | x64 |
+
 ## Project Structure
 
 ```
