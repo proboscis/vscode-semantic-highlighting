@@ -25,6 +25,10 @@ enum SymbolKind {
     MethodCall,   // Method calls: obj.method() -> method
     FunctionCall, // Function calls: func() -> func
     Import,       // Imported module/name: import os, from x import y
+    String,       // Normal string literals: "hello", 'hello', """..."""
+    Fstring,      // F-strings: f"hello {name}"
+    RawString,    // Raw strings: r"hello\n"
+    ByteString,   // Byte strings: b"hello"
 }
 
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -638,8 +642,19 @@ impl<'a> SymbolCollector<'a> {
                 self.visit_expr(&yield_from.value);
             }
             ast::Expr::JoinedStr(joined) => {
+                // F-strings are represented as JoinedStr
+                // Record the whole f-string as Fstring kind
+                self.record_fstring_literal(joined.range);
+                // Still visit the values to handle any nested expressions
                 for value in &joined.values {
-                    self.visit_expr(value);
+                    // Only visit FormattedValue parts (the {expr} parts)
+                    // Skip Constant parts as they're part of the f-string literal
+                    if let ast::Expr::FormattedValue(formatted) = value {
+                        self.visit_expr(&formatted.value);
+                        if let Some(spec) = &formatted.format_spec {
+                            self.visit_expr(spec);
+                        }
+                    }
                 }
             }
             ast::Expr::FormattedValue(formatted) => {
@@ -648,7 +663,14 @@ impl<'a> SymbolCollector<'a> {
                     self.visit_expr(spec);
                 }
             }
-            ast::Expr::Constant(_) => {}
+            ast::Expr::Constant(constant) => {
+                // Check if this is a string constant
+                if let ast::Constant::Str(_) = &constant.value {
+                    self.record_string_literal(constant.range);
+                } else if let ast::Constant::Bytes(_) = &constant.value {
+                    self.record_string_literal(constant.range);
+                }
+            }
         }
     }
 
@@ -946,6 +968,52 @@ impl<'a> SymbolCollector<'a> {
             kind,
         };
         self.symbols.entry(key).or_default().push(occurrence);
+    }
+
+    fn record_string_literal(&mut self, range: TextRange) {
+        let start: usize = range.start().into();
+        let end: usize = range.end().into();
+        if start >= end || start >= self.source.len() {
+            return;
+        }
+        let end = cmp::min(end, self.source.len());
+        
+        // Get the string literal text to check for prefix
+        let literal_text = &self.source[start..end];
+        
+        // Determine the string kind based on prefix
+        // Prefixes can be: f, r, b, fr, rf, br, rb, F, R, B, etc. (case insensitive)
+        let prefix = literal_text
+            .chars()
+            .take_while(|c| !matches!(c, '"' | '\''))
+            .collect::<String>()
+            .to_lowercase();
+        
+        let kind = if prefix.contains('f') {
+            SymbolKind::Fstring
+        } else if prefix.contains('b') {
+            SymbolKind::ByteString
+        } else if prefix.contains('r') {
+            SymbolKind::RawString
+        } else {
+            SymbolKind::String
+        };
+        
+        let occurrence = self.occurrence_from_span(start, end);
+        // Use a placeholder name for string literals - they'll be grouped by kind
+        self.insert_occurrence("__string__", kind, occurrence);
+    }
+
+    fn record_fstring_literal(&mut self, range: TextRange) {
+        let start: usize = range.start().into();
+        let end: usize = range.end().into();
+        if start >= end || start >= self.source.len() {
+            return;
+        }
+        let end = cmp::min(end, self.source.len());
+        
+        let occurrence = self.occurrence_from_span(start, end);
+        self.insert_occurrence("__string__", SymbolKind::Fstring, occurrence);
     }
 
     fn into_output(self) -> HighlighterOutput {

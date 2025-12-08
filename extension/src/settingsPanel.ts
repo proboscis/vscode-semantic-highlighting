@@ -586,7 +586,11 @@ export class SettingsPanel {
       self: 'self / cls',
       builtin: 'Built-in',
       kwargName: 'Kwarg Name (func(x=0))',
-      import: 'Import'
+      import: 'Import',
+      stringLiteral: 'String Literal',
+      fstringLiteral: 'F-String',
+      rawStringLiteral: 'Raw String',
+      byteStringLiteral: 'Byte String'
     };
     
     const defaultCategories = {
@@ -604,7 +608,11 @@ export class SettingsPanel {
       self: { enabled: true, hueRange: [290, 310], saturation: [50, 70], lightness: [50, 65] },
       builtin: { enabled: true, hueRange: [220, 260], saturation: [40, 60], lightness: [55, 70] },
       kwargName: { enabled: true, hueRange: [0, 360], saturation: [40, 60], lightness: [55, 70] },
-      import: { enabled: true, hueRange: [0, 360], saturation: [35, 55], lightness: [60, 75] }
+      import: { enabled: true, hueRange: [0, 360], saturation: [35, 55], lightness: [60, 75] },
+      stringLiteral: { enabled: false, hueRange: [80, 120], saturation: [40, 60], lightness: [50, 65] },
+      fstringLiteral: { enabled: false, hueRange: [30, 60], saturation: [45, 65], lightness: [55, 70] },
+      rawStringLiteral: { enabled: false, hueRange: [180, 220], saturation: [40, 60], lightness: [50, 65] },
+      byteStringLiteral: { enabled: false, hueRange: [270, 310], saturation: [40, 60], lightness: [50, 65] }
     };
     
     const keywords = [

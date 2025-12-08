@@ -17,7 +17,11 @@ type SemanticCategory =
   | 'self'
   | 'builtin'
   | 'kwargName'   // Keyword argument names in function calls: func(x=0)
-  | 'import';     // Import statements: import os, from x import y
+  | 'import'      // Import statements: import os, from x import y
+  | 'stringLiteral'      // Normal string literals: "hello", 'hello'
+  | 'fstringLiteral'     // F-strings: f"hello {name}"
+  | 'rawStringLiteral'   // Raw strings: r"hello\n"
+  | 'byteStringLiteral'; // Byte strings: b"hello"
 
 interface SemanticCategoryConfig {
   enabled: boolean;
@@ -102,6 +106,14 @@ function getSemanticCategory(name: string, kind: string): SemanticCategory | 'ke
       return 'kwargName';
     case 'import':
       return 'import';
+    case 'string':
+      return 'stringLiteral';
+    case 'fstring':
+      return 'fstringLiteral';
+    case 'raw_string':
+      return 'rawStringLiteral';
+    case 'byte_string':
+      return 'byteStringLiteral';
     case 'variable':
       // For now, treat as local variable (we can distinguish local/global later)
       return 'localVariable';

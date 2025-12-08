@@ -115,7 +115,7 @@
         },
         "pythonSemanticHighlighter.semanticCategories": {
           "type": "object",
-          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`, `kwargName`, `import`",
+          "markdownDescription": "Semantic categories with random color allocation based on symbol name hash.\n\n**[⚙️ Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)** - Configure with sliders and toggles\n\n**Example:**\n```json\n{\n  \"localVariable\": {\n    \"enabled\": true,\n    \"hueRange\": [180, 270],\n    \"saturation\": [40, 60],\n    \"lightness\": [55, 70]\n  }\n}\n```\n\n**Categories:** `localVariable`, `globalVariable`, `parameter`, `functionDef`, `functionCall`, `methodCall`, `classDef`, `classReference`, `attribute`, `typeAnnotation`, `decorator`, `self`, `builtin`, `kwargName`, `import`, `stringLiteral`, `fstringLiteral`, `rawStringLiteral`, `byteStringLiteral`",
           "default": {
             "localVariable": {
               "enabled": true,
@@ -206,6 +206,30 @@
               "hueRange": [0, 360],
               "saturation": [35, 55],
               "lightness": [60, 75]
+            },
+            "stringLiteral": {
+              "enabled": false,
+              "hueRange": [80, 120],
+              "saturation": [40, 60],
+              "lightness": [50, 65]
+            },
+            "fstringLiteral": {
+              "enabled": false,
+              "hueRange": [30, 60],
+              "saturation": [45, 65],
+              "lightness": [55, 70]
+            },
+            "rawStringLiteral": {
+              "enabled": false,
+              "hueRange": [180, 220],
+              "saturation": [40, 60],
+              "lightness": [50, 65]
+            },
+            "byteStringLiteral": {
+              "enabled": false,
+              "hueRange": [270, 310],
+              "saturation": [40, 60],
+              "lightness": [50, 65]
             }
           },
           "additionalProperties": {
