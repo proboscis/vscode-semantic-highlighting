@@ -184,6 +184,22 @@ export function activate(context: vscode.ExtensionContext) {
     const message = `Rust binary not found at ${binaryPath}. Please run 'cargo build --release' in rust-highlighter directory.`;
     outputChannel.appendLine(message);
     vscode.window.showWarningMessage(message);
+  } else {
+    // Ensure binary has execute permission on Unix systems
+    if (process.platform !== 'win32') {
+      try {
+        const stats = fs.statSync(binaryPath);
+        const mode = stats.mode;
+        // Check if executable bit is set (user execute = 0o100)
+        if ((mode & 0o100) === 0) {
+          outputChannel.appendLine('Adding execute permission to binary...');
+          fs.chmodSync(binaryPath, mode | 0o755);
+          outputChannel.appendLine('Execute permission added successfully');
+        }
+      } catch (err) {
+        outputChannel.appendLine(`Warning: Could not set execute permission: ${err}`);
+      }
+    }
   }
 
   // Register event handlers
