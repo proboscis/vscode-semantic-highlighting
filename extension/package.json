@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.4.4",
+  "version": "1.5.0",
   "publisher": "proboscis",
   "repository": {
     "type": "git",
@@ -270,6 +270,30 @@
           "additionalProperties": {
             "type": "string",
             "description": "Hex color value for this keyword (empty = use theme default)"
+          }
+        },
+        "pythonSemanticHighlighter.excludeKeywordHues": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Automatically exclude keyword colors from the hue range used for symbol coloring. This helps distinguish user-defined symbols from keywords like `def`, `if`, `try`.\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**"
+        },
+        "pythonSemanticHighlighter.keywordHueExclusionRange": {
+          "type": "number",
+          "default": 20,
+          "minimum": 0,
+          "maximum": 180,
+          "markdownDescription": "The range (in degrees) around each keyword's hue to exclude. For example, if a keyword has hue 30 and this is set to 20, hues 10-50 will be excluded.\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**"
+        },
+        "pythonSemanticHighlighter.excludedHueRanges": {
+          "type": "array",
+          "default": [],
+          "markdownDescription": "Manually specify additional hue ranges to exclude from symbol coloring.\n\n**Example:**\n```json\n[[0, 30], [150, 180]]\n```\n\nThis excludes hues 0-30 (reds) and 150-180 (cyans).\n\n**[Open Visual Settings Panel](command:pythonSemanticHighlighter.openSettings)**",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "Hue range [min, max] (0-360)"
           }
         }
       }

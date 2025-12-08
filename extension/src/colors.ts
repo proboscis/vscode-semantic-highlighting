@@ -64,6 +64,103 @@ function getKeywordColors(): Record<string, string> {
   return config.get<Record<string, string>>('keywordColors', {});
 }
 
+function getExcludeKeywordHues(): boolean {
+  const config = getConfig();
+  return config.get<boolean>('excludeKeywordHues', true);
+}
+
+function getKeywordHueExclusionRange(): number {
+  const config = getConfig();
+  return config.get<number>('keywordHueExclusionRange', 20);
+}
+
+function getManualExcludedHueRanges(): [number, number][] {
+  const config = getConfig();
+  return config.get<[number, number][]>('excludedHueRanges', []);
+}
+
+// Cache for excluded hue ranges to avoid recalculating on every color generation
+let cachedExcludedRanges: [number, number][] | null = null;
+
+/**
+ * Clear the excluded hue ranges cache (call when settings change)
+ */
+export function clearExcludedHueRangesCache(): void {
+  cachedExcludedRanges = null;
+}
+
+/**
+ * Get all excluded hue ranges combining keyword colors and manual settings
+ * Ranges are normalized to [min, max] format where min < max
+ * Handles hue wraparound (e.g., range crossing 360/0 boundary)
+ */
+function getExcludedHueRanges(): [number, number][] {
+  if (cachedExcludedRanges !== null) {
+    return cachedExcludedRanges;
+  }
+
+  const excludedRanges: [number, number][] = [];
+  
+  // Add manual excluded ranges
+  const manualRanges = getManualExcludedHueRanges();
+  for (const range of manualRanges) {
+    if (Array.isArray(range) && range.length === 2) {
+      excludedRanges.push([range[0], range[1]]);
+    }
+  }
+  
+  // Add keyword color hue ranges if enabled
+  if (getExcludeKeywordHues()) {
+    const keywordColors = getKeywordColors();
+    const exclusionRange = getKeywordHueExclusionRange();
+    
+    for (const color of Object.values(keywordColors)) {
+      if (color && color !== '') {
+        const hsl = hexToHsl(color);
+        if (hsl !== null) {
+          // Create exclusion range around the keyword hue
+          const minHue = hsl.h - exclusionRange;
+          const maxHue = hsl.h + exclusionRange;
+          
+          // Handle wraparound: if range crosses 0/360 boundary, split into two ranges
+          if (minHue < 0) {
+            excludedRanges.push([0, maxHue]);
+            excludedRanges.push([360 + minHue, 360]);
+          } else if (maxHue > 360) {
+            excludedRanges.push([minHue, 360]);
+            excludedRanges.push([0, maxHue - 360]);
+          } else {
+            excludedRanges.push([minHue, maxHue]);
+          }
+        }
+      }
+    }
+  }
+  
+  cachedExcludedRanges = excludedRanges;
+  return excludedRanges;
+}
+
+/**
+ * Check if a hue value falls within any excluded range
+ * @param hue - Hue value (0-360)
+ * @returns true if hue should be excluded
+ */
+function isHueExcluded(hue: number): boolean {
+  const excludedRanges = getExcludedHueRanges();
+  
+  // Normalize hue to 0-360
+  hue = ((hue % 360) + 360) % 360;
+  
+  for (const [min, max] of excludedRanges) {
+    if (hue >= min && hue <= max) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 /**
  * Map Rust output kind to semantic category
  */
@@ -179,6 +276,7 @@ function vanDerCorput(n: number, base: number = 2): number {
 /**
  * Get a hue value within range using maximum-separation strategy
  * Adjacent picks will be far apart in hue space
+ * Automatically skips hues that fall within excluded ranges (keyword colors, etc.)
  * 
  * Example with range [0, 100] and indices 0,1,2,3,4,5,6,7:
  *   0 → 0, 1 → 50, 2 → 25, 3 → 75, 4 → 12.5, 5 → 62.5, 6 → 37.5, 7 → 87.5
@@ -188,10 +286,29 @@ function getDistributedHue(index: number, hueRange: [number, number]): number {
   const rangeEnd = hueRange[1];
   const rangeSpan = rangeEnd - rangeStart;
   
-  // Use van der Corput sequence for maximum separation
-  // Add 1 to index so first value isn't always at the start
-  const t = vanDerCorput(index + 1);
+  // Maximum attempts to find a non-excluded hue
+  // This prevents infinite loops if most of the range is excluded
+  const maxAttempts = 100;
   
+  let currentIndex = index;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // Use van der Corput sequence for maximum separation
+    // Add 1 to index so first value isn't always at the start
+    const t = vanDerCorput(currentIndex + 1);
+    const hue = rangeStart + (t * rangeSpan);
+    
+    // Check if this hue is excluded
+    if (!isHueExcluded(hue)) {
+      return hue;
+    }
+    
+    // Try next index in the sequence
+    currentIndex++;
+  }
+  
+  // Fallback: if all attempts found excluded hues, return the original calculation
+  // This ensures we always return a valid hue even if the entire range is excluded
+  const t = vanDerCorput(index + 1);
   return rangeStart + (t * rangeSpan);
 }
 
@@ -208,6 +325,56 @@ function hslToHex(h: number, s: number, l: number): string {
     return Math.round(255 * color).toString(16).padStart(2, '0');
   };
   return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/**
+ * Convert hex color string to HSL values
+ * @param hex - Hex color string (e.g., "#CC7832" or "CC7832")
+ * @returns Object with h (0-360), s (0-100), l (0-100) or null if invalid
+ */
+function hexToHsl(hex: string): { h: number; s: number; l: number } | null {
+  // Remove # if present
+  hex = hex.replace(/^#/, '');
+  
+  // Validate hex format
+  if (!/^[0-9A-Fa-f]{6}$/.test(hex)) {
+    return null;
+  }
+  
+  // Parse RGB values
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+  
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  
+  if (delta !== 0) {
+    s = l > 0.5 ? delta / (2 - max - min) : delta / (max + min);
+    
+    switch (max) {
+      case r:
+        h = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
+        break;
+      case g:
+        h = ((b - r) / delta + 2) * 60;
+        break;
+      case b:
+        h = ((r - g) / delta + 4) * 60;
+        break;
+    }
+  }
+  
+  return {
+    h: Math.round(h),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100)
+  };
 }
 
 /**

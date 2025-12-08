@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getRustBinaryPath, analyzeSource, HighlighterOutput } from './highlighter';
-import { createDecorations, clearDecorationCache, DecorationEntry } from './colors';
+import { createDecorations, clearDecorationCache, clearExcludedHueRangesCache, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
 let outputChannel: vscode.OutputChannel;
@@ -295,6 +295,7 @@ export function activate(context: vscode.ExtensionContext) {
         
         // Now safe to clear caches
         clearDecorationCache(decorationCache);
+        clearExcludedHueRangesCache();
         analysisCache.clear();
         pendingDecorations.clear();
         
