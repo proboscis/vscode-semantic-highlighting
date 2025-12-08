@@ -52,6 +52,15 @@ export class SettingsPanel {
           case 'clearKeywordColor':
             await this._clearKeywordColor(message.keyword);
             break;
+          case 'updateExcludeKeywordHues':
+            await this._updateExcludeKeywordHues(message.value);
+            break;
+          case 'updateKeywordHueExclusionRange':
+            await this._updateKeywordHueExclusionRange(message.value);
+            break;
+          case 'updateExcludedHueRanges':
+            await this._updateExcludedHueRanges(message.value);
+            break;
           case 'getSettings':
             this._sendCurrentSettings();
             break;
@@ -103,12 +112,30 @@ export class SettingsPanel {
     await vsConfig.update('keywordColors', colors, vscode.ConfigurationTarget.Global);
   }
 
+  private async _updateExcludeKeywordHues(value: boolean) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('excludeKeywordHues', value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _updateKeywordHueExclusionRange(value: number) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('keywordHueExclusionRange', value, vscode.ConfigurationTarget.Global);
+  }
+
+  private async _updateExcludedHueRanges(value: [number, number][]) {
+    const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
+    await vsConfig.update('excludedHueRanges', value, vscode.ConfigurationTarget.Global);
+  }
+
   private _sendCurrentSettings() {
     const vsConfig = vscode.workspace.getConfiguration('pythonSemanticHighlighter');
     const enable = vsConfig.get('enable', true);
     const debounceMs = vsConfig.get('debounceMs', 150);
     const semanticCategories = vsConfig.get('semanticCategories', {});
     const keywordColors = vsConfig.get('keywordColors', {});
+    const excludeKeywordHues = vsConfig.get('excludeKeywordHues', true);
+    const keywordHueExclusionRange = vsConfig.get('keywordHueExclusionRange', 20);
+    const excludedHueRanges = vsConfig.get('excludedHueRanges', []);
     
     this._panel.webview.postMessage({
       command: 'settingsLoaded',
@@ -116,6 +143,9 @@ export class SettingsPanel {
       debounceMs,
       semanticCategories,
       keywordColors,
+      excludeKeywordHues,
+      keywordHueExclusionRange,
+      excludedHueRanges,
     });
   }
 
@@ -530,6 +560,169 @@ export class SettingsPanel {
       padding: 2px 6px;
       border-radius: 3px;
     }
+    
+    /* Hue Exclusion Section */
+    .exclusion-section {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    
+    .exclusion-visualization {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      margin-top: 16px;
+    }
+    
+    .exclusion-wheel-container {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      flex-shrink: 0;
+    }
+    
+    .exclusion-wheel {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        hsl(0, 70%, 60%),
+        hsl(60, 70%, 60%),
+        hsl(120, 70%, 60%),
+        hsl(180, 70%, 60%),
+        hsl(240, 70%, 60%),
+        hsl(300, 70%, 60%),
+        hsl(360, 70%, 60%)
+      );
+      position: relative;
+    }
+    
+    .exclusion-wheel-inner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 50%;
+      height: 50%;
+      background: var(--card-bg);
+      border-radius: 50%;
+    }
+    
+    .exclusion-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .exclusion-info {
+      flex: 1;
+    }
+    
+    .exclusion-ranges-list {
+      margin-top: 12px;
+    }
+    
+    .exclusion-range-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    
+    .exclusion-range-item.auto {
+      border-left: 3px solid var(--accent-color);
+    }
+    
+    .exclusion-range-item.manual {
+      border-left: 3px solid #e67e22;
+    }
+    
+    .exclusion-range-color {
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .exclusion-range-text {
+      flex: 1;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+    }
+    
+    .exclusion-range-label {
+      font-size: 10px;
+      color: var(--text-muted);
+      background: var(--border-color);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    
+    .exclusion-range-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      font-size: 14px;
+    }
+    
+    .exclusion-range-delete:hover {
+      color: var(--danger-color);
+    }
+    
+    .add-exclusion-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: none;
+      border: 1px dashed var(--border-color);
+      border-radius: 4px;
+      color: var(--text-muted);
+      cursor: pointer;
+      width: 100%;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    
+    .add-exclusion-btn:hover {
+      border-color: var(--accent-color);
+      color: var(--text-color);
+    }
+    
+    .exclusion-range-inputs {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    
+    .exclusion-range-inputs input {
+      width: 60px;
+      padding: 4px 8px;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      color: var(--text-color);
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    .no-exclusions {
+      color: var(--text-muted);
+      font-size: 13px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -556,6 +749,45 @@ export class SettingsPanel {
       <div class="debounce-control">
         <input type="range" id="debounce-slider" min="50" max="500" value="150">
         <span id="debounce-value">150ms</span>
+      </div>
+    </div>
+  </div>
+  
+  <h2>Hue Exclusion</h2>
+  <p class="subtitle">Exclude certain hue ranges from symbol coloring to distinguish from keywords.</p>
+  <div class="exclusion-section">
+    <div class="setting-row">
+      <div class="setting-info">
+        <span class="setting-name">Exclude Keyword Hues</span>
+        <span class="setting-desc">Automatically exclude hues of keyword colors from symbol coloring</span>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="exclude-keyword-hues-toggle" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-row" id="exclusion-range-row">
+      <div class="setting-info">
+        <span class="setting-name">Exclusion Range</span>
+        <span class="setting-desc">Range around each keyword hue to exclude (±degrees)</span>
+      </div>
+      <div class="debounce-control">
+        <input type="range" id="exclusion-range-slider" min="5" max="60" value="20">
+        <span id="exclusion-range-value">±20°</span>
+      </div>
+    </div>
+    
+    <div class="exclusion-visualization">
+      <div class="exclusion-wheel-container">
+        <div class="exclusion-wheel">
+          <div class="exclusion-wheel-inner"></div>
+        </div>
+        <svg class="exclusion-overlay" viewBox="0 0 100 100" id="exclusion-overlay"></svg>
+      </div>
+      <div class="exclusion-info">
+        <div class="setting-name" style="margin-bottom: 8px;">Excluded Hue Ranges</div>
+        <div id="exclusion-ranges-list" class="exclusion-ranges-list"></div>
+        <button class="add-exclusion-btn" id="add-exclusion-btn">+ Add Manual Exclusion Range</button>
       </div>
     </div>
   </div>
@@ -626,7 +858,10 @@ export class SettingsPanel {
     
     let currentSettings = {
       semanticCategories: { ...defaultCategories },
-      keywordColors: {}
+      keywordColors: {},
+      excludeKeywordHues: true,
+      keywordHueExclusionRange: 20,
+      excludedHueRanges: []
     };
     
     function hslToHex(h, s, l) {
@@ -638,6 +873,130 @@ export class SettingsPanel {
         return Math.round(255 * color).toString(16).padStart(2, '0');
       };
       return '#' + f(0) + f(8) + f(4);
+    }
+    
+    function hexToHsl(hex) {
+      hex = hex.replace(/^#/, '');
+      if (!/^[0-9A-Fa-f]{6}$/.test(hex)) return null;
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
+      const max = Math.max(r, g, b);
+      const min = Math.min(r, g, b);
+      const delta = max - min;
+      let h = 0;
+      if (delta !== 0) {
+        if (max === r) h = ((g - b) / delta + (g < b ? 6 : 0)) * 60;
+        else if (max === g) h = ((b - r) / delta + 2) * 60;
+        else h = ((r - g) / delta + 4) * 60;
+      }
+      return Math.round(h);
+    }
+    
+    function getAutoExcludedRanges() {
+      const ranges = [];
+      if (!currentSettings.excludeKeywordHues) return ranges;
+      
+      const exclusionRange = currentSettings.keywordHueExclusionRange;
+      for (const [keyword, color] of Object.entries(currentSettings.keywordColors)) {
+        if (color && color !== '') {
+          const hue = hexToHsl(color);
+          if (hue !== null) {
+            let minHue = hue - exclusionRange;
+            let maxHue = hue + exclusionRange;
+            if (minHue < 0) {
+              ranges.push({ min: 0, max: maxHue, keyword, color, auto: true });
+              ranges.push({ min: 360 + minHue, max: 360, keyword, color, auto: true });
+            } else if (maxHue > 360) {
+              ranges.push({ min: minHue, max: 360, keyword, color, auto: true });
+              ranges.push({ min: 0, max: maxHue - 360, keyword, color, auto: true });
+            } else {
+              ranges.push({ min: minHue, max: maxHue, keyword, color, auto: true });
+            }
+          }
+        }
+      }
+      return ranges;
+    }
+    
+    function getAllExcludedRanges() {
+      const autoRanges = getAutoExcludedRanges();
+      const manualRanges = (currentSettings.excludedHueRanges || []).map(r => ({
+        min: r[0],
+        max: r[1],
+        auto: false
+      }));
+      return [...autoRanges, ...manualRanges];
+    }
+    
+    function renderExclusionVisualization() {
+      const overlay = document.getElementById('exclusion-overlay');
+      const list = document.getElementById('exclusion-ranges-list');
+      const allRanges = getAllExcludedRanges();
+      
+      // Render SVG overlay
+      let svgContent = '';
+      for (const range of allRanges) {
+        const startAngle = (range.min - 90) * Math.PI / 180;
+        const endAngle = (range.max - 90) * Math.PI / 180;
+        const radius = 50;
+        const innerRadius = 25;
+        
+        const x1 = 50 + radius * Math.cos(startAngle);
+        const y1 = 50 + radius * Math.sin(startAngle);
+        const x2 = 50 + radius * Math.cos(endAngle);
+        const y2 = 50 + radius * Math.sin(endAngle);
+        const x3 = 50 + innerRadius * Math.cos(endAngle);
+        const y3 = 50 + innerRadius * Math.sin(endAngle);
+        const x4 = 50 + innerRadius * Math.cos(startAngle);
+        const y4 = 50 + innerRadius * Math.sin(startAngle);
+        
+        const largeArc = (range.max - range.min) > 180 ? 1 : 0;
+        
+        svgContent += '<path d="M ' + x1 + ' ' + y1 + 
+          ' A ' + radius + ' ' + radius + ' 0 ' + largeArc + ' 1 ' + x2 + ' ' + y2 +
+          ' L ' + x3 + ' ' + y3 +
+          ' A ' + innerRadius + ' ' + innerRadius + ' 0 ' + largeArc + ' 0 ' + x4 + ' ' + y4 +
+          ' Z" fill="rgba(0,0,0,0.7)" stroke="' + (range.auto ? '#0e639c' : '#e67e22') + '" stroke-width="0.5"/>';
+      }
+      overlay.innerHTML = svgContent;
+      
+      // Render list
+      if (allRanges.length === 0) {
+        list.innerHTML = '<div class="no-exclusions">No exclusion ranges configured. Keyword colors will be set in the Keyword Colors section below.</div>';
+        return;
+      }
+      
+      let listHtml = '';
+      for (let i = 0; i < allRanges.length; i++) {
+        const range = allRanges[i];
+        const midHue = (range.min + range.max) / 2;
+        const bgColor = hslToHex(midHue, 60, 50);
+        
+        listHtml += '<div class="exclusion-range-item ' + (range.auto ? 'auto' : 'manual') + '">';
+        listHtml += '<div class="exclusion-range-color" style="background: ' + bgColor + '"></div>';
+        listHtml += '<span class="exclusion-range-text">' + Math.round(range.min) + '° - ' + Math.round(range.max) + '°</span>';
+        
+        if (range.auto) {
+          listHtml += '<span class="exclusion-range-label">' + range.keyword + '</span>';
+        } else {
+          const manualIndex = i - getAutoExcludedRanges().length;
+          listHtml += '<span class="exclusion-range-label">manual</span>';
+          listHtml += '<button class="exclusion-range-delete" data-manual-index="' + manualIndex + '" title="Remove">✕</button>';
+        }
+        listHtml += '</div>';
+      }
+      list.innerHTML = listHtml;
+      
+      // Add delete handlers
+      list.querySelectorAll('.exclusion-range-delete').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(e.target.dataset.manualIndex);
+          currentSettings.excludedHueRanges.splice(index, 1);
+          vscode.postMessage({ command: 'updateExcludedHueRanges', value: currentSettings.excludedHueRanges });
+          renderExclusionVisualization();
+        });
+      });
     }
     
     function renderSemanticCategories() {
@@ -938,6 +1297,7 @@ export class SettingsPanel {
           currentSettings.keywordColors[keyword] = e.target.value;
           vscode.postMessage({ command: 'updateKeywordColor', keyword, color: e.target.value });
           renderKeywordColors();
+          renderExclusionVisualization();
         });
         
         const clearBtn = item.querySelector('.clear-btn');
@@ -946,6 +1306,7 @@ export class SettingsPanel {
             delete currentSettings.keywordColors[keyword];
             vscode.postMessage({ command: 'clearKeywordColor', keyword });
             renderKeywordColors();
+            renderExclusionVisualization();
           });
         }
       }
@@ -968,6 +1329,60 @@ export class SettingsPanel {
       vscode.postMessage({ command: 'updateDebounceMs', value: parseInt(e.target.value) });
     });
     
+    // Hue exclusion handlers
+    const excludeKeywordHuesToggle = document.getElementById('exclude-keyword-hues-toggle');
+    const exclusionRangeSlider = document.getElementById('exclusion-range-slider');
+    const exclusionRangeValue = document.getElementById('exclusion-range-value');
+    const exclusionRangeRow = document.getElementById('exclusion-range-row');
+    const addExclusionBtn = document.getElementById('add-exclusion-btn');
+    
+    excludeKeywordHuesToggle.addEventListener('change', (e) => {
+      currentSettings.excludeKeywordHues = e.target.checked;
+      exclusionRangeRow.style.opacity = e.target.checked ? '1' : '0.5';
+      exclusionRangeRow.style.pointerEvents = e.target.checked ? 'auto' : 'none';
+      vscode.postMessage({ command: 'updateExcludeKeywordHues', value: e.target.checked });
+      renderExclusionVisualization();
+    });
+    
+    exclusionRangeSlider.addEventListener('input', (e) => {
+      exclusionRangeValue.textContent = '±' + e.target.value + '°';
+    });
+    
+    exclusionRangeSlider.addEventListener('change', (e) => {
+      currentSettings.keywordHueExclusionRange = parseInt(e.target.value);
+      vscode.postMessage({ command: 'updateKeywordHueExclusionRange', value: parseInt(e.target.value) });
+      renderExclusionVisualization();
+    });
+    
+    addExclusionBtn.addEventListener('click', () => {
+      // Find a gap in the hue range that's not already excluded
+      const allRanges = getAllExcludedRanges();
+      let newMin = 0;
+      let newMax = 30;
+      
+      // Try to find an unoccupied range
+      for (let testHue = 0; testHue < 360; testHue += 30) {
+        const testMin = testHue;
+        const testMax = testHue + 30;
+        let overlaps = false;
+        for (const range of allRanges) {
+          if (!(testMax <= range.min || testMin >= range.max)) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (!overlaps) {
+          newMin = testMin;
+          newMax = testMax;
+          break;
+        }
+      }
+      
+      currentSettings.excludedHueRanges.push([newMin, newMax]);
+      vscode.postMessage({ command: 'updateExcludedHueRanges', value: currentSettings.excludedHueRanges });
+      renderExclusionVisualization();
+    });
+    
     window.addEventListener('message', event => {
       const message = event.data;
       if (message.command === 'settingsLoaded') {
@@ -975,6 +1390,16 @@ export class SettingsPanel {
         enableToggle.checked = message.enable !== false;
         debounceSlider.value = message.debounceMs || 150;
         debounceValue.textContent = (message.debounceMs || 150) + 'ms';
+        
+        // Update hue exclusion settings
+        excludeKeywordHuesToggle.checked = message.excludeKeywordHues !== false;
+        exclusionRangeSlider.value = message.keywordHueExclusionRange || 20;
+        exclusionRangeValue.textContent = '±' + (message.keywordHueExclusionRange || 20) + '°';
+        exclusionRangeRow.style.opacity = message.excludeKeywordHues !== false ? '1' : '0.5';
+        exclusionRangeRow.style.pointerEvents = message.excludeKeywordHues !== false ? 'auto' : 'none';
+        currentSettings.excludeKeywordHues = message.excludeKeywordHues !== false;
+        currentSettings.keywordHueExclusionRange = message.keywordHueExclusionRange || 20;
+        currentSettings.excludedHueRanges = message.excludedHueRanges || [];
         
         // Update categories
         currentSettings.semanticCategories = { ...defaultCategories };
@@ -984,11 +1409,13 @@ export class SettingsPanel {
         currentSettings.keywordColors = message.keywordColors || {};
         renderSemanticCategories();
         renderKeywordColors();
+        renderExclusionVisualization();
       }
     });
     
     renderSemanticCategories();
     renderKeywordColors();
+    renderExclusionVisualization();
     vscode.postMessage({ command: 'getSettings' });
   </script>
 </body>
