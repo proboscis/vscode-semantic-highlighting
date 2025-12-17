@@ -53,6 +53,11 @@
         "title": "Open Settings Panel",
         "category": "Python Semantic Highlighter",
         "icon": "$(gear)"
+      },
+      {
+        "command": "pythonSemanticHighlighter.debugExclusion",
+        "title": "Debug Hue Exclusion",
+        "category": "Python Semantic Highlighter"
       }
     ],
     "menus": {

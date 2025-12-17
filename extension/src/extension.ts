@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getRustBinaryPath, analyzeSource, HighlighterOutput } from './highlighter';
-import { createDecorations, clearDecorationCache, clearExcludedHueRangesCache, clearBuiltinsCache, DecorationEntry } from './colors';
+import { createDecorations, clearDecorationCache, clearExcludedHueRangesCache, clearBuiltinsCache, setDebugOutputChannel, getExcludedHueRangesDebug, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
 let outputChannel: vscode.OutputChannel;
@@ -169,6 +169,9 @@ function clearDocumentDecorations(documentUri: string): void {
 export function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel('Python Semantic Highlighter');
   outputChannel.appendLine('Python Semantic Highlighter activating...');
+  
+  // Set debug output channel for colors module
+  setDebugOutputChannel(outputChannel);
 
   // Initialize state
   decorationCache = new Map();
@@ -339,6 +342,41 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('pythonSemanticHighlighter.openSettings', () => {
       SettingsPanel.createOrShow(context.extensionUri);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pythonSemanticHighlighter.debugExclusion', () => {
+      const debug = getExcludedHueRangesDebug();
+      outputChannel.show();
+      outputChannel.appendLine('');
+      outputChannel.appendLine('=== Hue Exclusion Debug Info ===');
+      outputChannel.appendLine('');
+      outputChannel.appendLine('Settings:');
+      outputChannel.appendLine(`  Theme keyword hues: ${JSON.stringify(debug.themeKeywordHues)} (±${debug.themeKeywordHueRange}°)`);
+      outputChannel.appendLine(`  Manual excluded ranges: ${JSON.stringify(debug.manualRanges)}`);
+      outputChannel.appendLine(`  Exclude keyword hues: ${debug.excludeKeywordHues}`);
+      if (debug.excludeKeywordHues && Object.keys(debug.keywordColors).length > 0) {
+        outputChannel.appendLine(`  Keyword colors: ${JSON.stringify(debug.keywordColors)} (±${debug.keywordHueExclusionRange}°)`);
+      }
+      outputChannel.appendLine('');
+      outputChannel.appendLine(`Final computed exclusion ranges: ${JSON.stringify(debug.ranges)}`);
+      if (debug.ranges.length === 0) {
+        outputChannel.appendLine('');
+        outputChannel.appendLine('⚠️  WARNING: No exclusion ranges configured!');
+        outputChannel.appendLine('   To exclude hues, set one of:');
+        outputChannel.appendLine('   - themeKeywordHues: Add hue values (0-360) for your theme\'s keyword colors');
+        outputChannel.appendLine('   - excludedHueRanges: Manually specify ranges like [[20,60], [200,240]]');
+        outputChannel.appendLine('   - keywordColors: Set custom keyword colors (auto-excludes their hues)');
+      }
+      outputChannel.appendLine('');
+      outputChannel.appendLine('Sample hues for first 10 variables (with full hue range [0,360]):');
+      for (const sample of debug.sampleHues) {
+        const status = sample.excluded ? '(raw hue was excluded, skipped)' : '';
+        outputChannel.appendLine(`  Variable ${sample.index}: hue ${sample.hue}° ${status}`);
+      }
+      outputChannel.appendLine('');
+      outputChannel.appendLine('================================');
     })
   );
 

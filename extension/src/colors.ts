@@ -139,11 +139,76 @@ function getThemeKeywordHueRange(): number {
 // Cache for excluded hue ranges to avoid recalculating on every color generation
 let cachedExcludedRanges: [number, number][] | null = null;
 
+// Debug output channel (set from extension.ts)
+let debugOutputChannel: { appendLine: (msg: string) => void } | null = null;
+
+/**
+ * Set the output channel for debug logging
+ */
+export function setDebugOutputChannel(channel: { appendLine: (msg: string) => void }): void {
+  debugOutputChannel = channel;
+}
+
 /**
  * Clear the excluded hue ranges cache (call when settings change)
  */
 export function clearExcludedHueRangesCache(): void {
   cachedExcludedRanges = null;
+  debugOutputChannel?.appendLine('Cleared excluded hue ranges cache');
+}
+
+/**
+ * Get the current excluded hue ranges for debugging
+ * Forces a cache refresh to show current settings
+ */
+export function getExcludedHueRangesDebug(): { 
+  ranges: [number, number][], 
+  themeKeywordHues: number[], 
+  themeKeywordHueRange: number,
+  manualRanges: [number, number][],
+  keywordColors: Record<string, string>,
+  excludeKeywordHues: boolean,
+  keywordHueExclusionRange: number,
+  sampleHues: { index: number, hue: number, excluded: boolean }[]
+} {
+  // Temporarily clear cache to get fresh values
+  const prevCache = cachedExcludedRanges;
+  cachedExcludedRanges = null;
+  
+  const ranges = getExcludedHueRanges();
+  const themeKeywordHues = getThemeKeywordHues();
+  const themeKeywordHueRange = getThemeKeywordHueRange();
+  const manualRanges = getManualExcludedHueRanges();
+  const keywordColors = getKeywordColors();
+  const excludeKeywordHues = getExcludeKeywordHues();
+  const keywordHueExclusionRange = getKeywordHueExclusionRange();
+  
+  // Generate sample hues to show what colors would be used
+  const sampleHues: { index: number, hue: number, excluded: boolean }[] = [];
+  for (let i = 0; i < 10; i++) {
+    const t = vanDerCorput(i + 1);
+    const rawHue = t * 360;
+    const actualHue = getDistributedHue(i, [0, 360]);
+    sampleHues.push({
+      index: i,
+      hue: Math.round(actualHue),
+      excluded: isHueExcluded(rawHue)
+    });
+  }
+  
+  // Restore cache
+  cachedExcludedRanges = prevCache;
+  
+  return { 
+    ranges, 
+    themeKeywordHues, 
+    themeKeywordHueRange,
+    manualRanges, 
+    keywordColors,
+    excludeKeywordHues,
+    keywordHueExclusionRange,
+    sampleHues
+  };
 }
 
 /**
@@ -176,15 +241,25 @@ function getExcludedHueRanges(): [number, number][] {
 
   // Add manual excluded ranges
   const manualRanges = getManualExcludedHueRanges();
+  debugOutputChannel?.appendLine(`Manual excluded ranges from settings: ${JSON.stringify(manualRanges)}`);
   for (const range of manualRanges) {
     if (Array.isArray(range) && range.length === 2) {
-      excludedRanges.push([range[0], range[1]]);
+      const [start, end] = range;
+      // Handle wraparound ranges (e.g., [350, 30] means 350-360 and 0-30)
+      if (start > end) {
+        excludedRanges.push([start, 360]);
+        excludedRanges.push([0, end]);
+        debugOutputChannel?.appendLine(`  Wraparound range [${start}, ${end}] split into [${start}, 360] and [0, ${end}]`);
+      } else {
+        excludedRanges.push([start, end]);
+      }
     }
   }
 
   // Add theme keyword hues (user-specified hues for their theme's keywords)
   const themeKeywordHues = getThemeKeywordHues();
   const themeHueRange = getThemeKeywordHueRange();
+  debugOutputChannel?.appendLine(`Theme keyword hues: ${JSON.stringify(themeKeywordHues)}, range: ±${themeHueRange}°`);
   for (const hue of themeKeywordHues) {
     if (typeof hue === 'number' && hue >= 0 && hue <= 360) {
       addExclusionRange(hue, themeHueRange);
@@ -192,14 +267,18 @@ function getExcludedHueRanges(): [number, number][] {
   }
 
   // Add keyword color hue ranges if enabled (from keywordColors setting)
-  if (getExcludeKeywordHues()) {
+  const excludeKeywordHuesEnabled = getExcludeKeywordHues();
+  debugOutputChannel?.appendLine(`Exclude keyword hues enabled: ${excludeKeywordHuesEnabled}`);
+  if (excludeKeywordHuesEnabled) {
     const keywordColors = getKeywordColors();
     const exclusionRange = getKeywordHueExclusionRange();
+    debugOutputChannel?.appendLine(`Keyword colors: ${JSON.stringify(keywordColors)}, exclusion range: ±${exclusionRange}°`);
 
     for (const color of Object.values(keywordColors)) {
       if (color && color !== '') {
         const hsl = hexToHsl(color);
         if (hsl !== null) {
+          debugOutputChannel?.appendLine(`  Adding exclusion for keyword color ${color} (hue: ${hsl.h}°)`);
           addExclusionRange(hsl.h, exclusionRange);
         }
       }
@@ -207,6 +286,16 @@ function getExcludedHueRanges(): [number, number][] {
   }
 
   cachedExcludedRanges = excludedRanges;
+  
+  // Debug log the final excluded ranges
+  if (debugOutputChannel) {
+    if (excludedRanges.length > 0) {
+      debugOutputChannel.appendLine(`Final excluded hue ranges: ${JSON.stringify(excludedRanges)}`);
+    } else {
+      debugOutputChannel.appendLine(`No hue exclusion ranges configured`);
+    }
+  }
+  
   return excludedRanges;
 }
 
@@ -364,6 +453,7 @@ function getDistributedHue(index: number, hueRange: [number, number]): number {
   const maxAttempts = 100;
   
   let currentIndex = index;
+  let skippedCount = 0;
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     // Use van der Corput sequence for maximum separation
     // Add 1 to index so first value isn't always at the start
@@ -372,17 +462,29 @@ function getDistributedHue(index: number, hueRange: [number, number]): number {
     
     // Check if this hue is excluded
     if (!isHueExcluded(hue)) {
+      if (skippedCount > 0 && debugOutputChannel) {
+        debugOutputChannel.appendLine(`Hue exclusion: skipped ${skippedCount} hues, used ${hue.toFixed(1)}°`);
+      }
       return hue;
     }
     
     // Try next index in the sequence
     currentIndex++;
+    skippedCount++;
   }
   
   // Fallback: if all attempts found excluded hues, return the original calculation
   // This ensures we always return a valid hue even if the entire range is excluded
   const t = vanDerCorput(index + 1);
-  return rangeStart + (t * rangeSpan);
+  const fallbackHue = rangeStart + (t * rangeSpan);
+  if (debugOutputChannel) {
+    debugOutputChannel.appendLine(`WARNING: Hue exclusion fallback triggered!`);
+    debugOutputChannel.appendLine(`  Category hueRange: [${rangeStart}, ${rangeEnd}] (span: ${rangeSpan}°)`);
+    debugOutputChannel.appendLine(`  Tried ${maxAttempts} indices, all hues were excluded`);
+    debugOutputChannel.appendLine(`  Using excluded hue ${fallbackHue.toFixed(1)}° as fallback`);
+    debugOutputChannel.appendLine(`  Consider: widening the category's hueRange or narrowing exclusion ranges`);
+  }
+  return fallbackHue;
 }
 
 /**

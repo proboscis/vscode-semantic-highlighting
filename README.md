@@ -211,9 +211,11 @@ Uses **Van der Corput sequence** for maximum color separation:
 cd extension
 
 # Login (first time only)
-vsce login proboscis
+vsce login <publisher> # the `publisher` field in extension/package.json
 
-# Publish
+# Publish (PAT comes from `-p` or `VSCE_PAT`)
+vsce publish -p "$VSCE_PAT"
+# or (after `vsce login`)
 vsce publish
 
 # Or publish with version bump
