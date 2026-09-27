@@ -352,7 +352,7 @@ const HY_KEYWORDS: &[&str] = &[
 /// doeff-hy forms that are keywords wherever they appear (definitions and binding syntax).
 const DOEFF_KEYWORDS: &[&str] = &[
     "defk", "deff", "defp", "defpp", "fnk", "do!", "<-", "<->", "for/do", "deftest", "defpipeline",
-    "defmcp-tool", "set!", "lazy-val", "lazy-var", "defhandler", "resume", "with-handler", "defrecord", "defenum",
+    "defmcp-tool", "set!", "lazy-val", "lazy-var", "defhandler", "defeffect", "resume", "with-handler", "defrecord", "defenum",
     "defworkflow", "defphase", "defadr", "defsemgrep", "law",
 ];
 
@@ -959,6 +959,7 @@ impl<'a> HyAnalyzer<'a> {
                 }
             }
             "defhandler" => self.visit_handler_def(rest),
+            "defeffect" => self.visit_effect_def(rest),
             "handle" => {
                 if let Some((body, clauses)) = rest.split_first() {
                     self.visit_expr(body);
@@ -1198,6 +1199,72 @@ impl<'a> HyAnalyzer<'a> {
                     self.visit_all(defaults);
                 }
                 _ => self.visit_expr(form),
+            }
+        }
+    }
+
+    /// `(defeffect Name "doc"? {:fields [a #^ T b] :answer T :tags {…}})` — the doeff-hy effect type (a frozen dataclass
+    /// that always derives EffectBase). The name is a class, the `:fields` names are attributes, `:answer` is a type.
+    fn visit_effect_def(&mut self, forms: &[Form]) {
+        let Some((name, body)) = forms.split_first() else {
+            return;
+        };
+        self.visit_definition_name(name, SymbolKind::Class);
+        let body = match body.first() {
+            Some(Form::Str { kind: StrKind::Plain, span, .. }) => {
+                self.record_lines("__docstring__", SymbolKind::Docstring, span.start, span.end);
+                &body[1..]
+            }
+            _ => body,
+        };
+        for form in body {
+            match form {
+                Form::Seq { delim: Delim::Brace, items } => {
+                    for pair in items.chunks(2) {
+                        match pair {
+                            [key @ Form::Keyword(span), value] if self.text(*span) == ":fields" => {
+                                self.visit_expr(key);
+                                self.visit_effect_fields(value);
+                            }
+                            [key @ Form::Keyword(span), value] if self.text(*span) == ":answer" => {
+                                self.visit_expr(key);
+                                self.visit_type(value);
+                            }
+                            _ => self.visit_all(pair),
+                        }
+                    }
+                }
+                _ => self.visit_expr(form),
+            }
+        }
+    }
+
+    /// The `:fields` list of a defeffect: plain names and `#^ T name` become attributes.
+    fn visit_effect_fields(&mut self, form: &Form) {
+        let Some(fields) = form.bracket_items() else {
+            self.visit_expr(form);
+            return;
+        };
+        for field in fields {
+            match field {
+                Form::Symbol(span) => {
+                    let name = mangle(self.text(*span));
+                    self.record(&name, SymbolKind::Attribute, span.start, span.end);
+                }
+                Form::Annotated { annotation, target } => {
+                    if let Some(annotation) = annotation {
+                        self.visit_type(annotation);
+                    }
+                    match target.as_deref() {
+                        Some(Form::Symbol(span)) => {
+                            let name = mangle(self.text(*span));
+                            self.record(&name, SymbolKind::Attribute, span.start, span.end);
+                        }
+                        Some(other) => self.visit_expr(other),
+                        None => {}
+                    }
+                }
+                other => self.visit_expr(other),
             }
         }
     }
@@ -1504,6 +1571,19 @@ mod tests {
         let table = out.symbols.iter().find(|s| s.name == "table").unwrap();
         assert_eq!(table.kind, SymbolKind::Parameter);
         assert_eq!(table.occurrences.len(), 2);
+    }
+
+    #[test]
+    fn defeffect_name_fields_answer_and_docstring() {
+        let source = "(defeffect BorrowToken \"Borrow a token\" {:fields [profile #^ int ttl] :answer str :tags {:context \"custody\" :role \"intent\"}})\n";
+        let out = analyze(source);
+        assert!(has(&out, "defeffect", SymbolKind::Keyword));
+        assert!(has(&out, "BorrowToken", SymbolKind::Class));
+        assert!(has(&out, "profile", SymbolKind::Attribute));
+        assert!(has(&out, "ttl", SymbolKind::Attribute));
+        assert!(has(&out, "int", SymbolKind::TypeAnnotation));
+        assert!(has(&out, "str", SymbolKind::TypeAnnotation));
+        assert!(has(&out, "__docstring__", SymbolKind::Docstring));
     }
 
     #[test]
