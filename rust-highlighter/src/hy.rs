@@ -352,7 +352,7 @@ const HY_KEYWORDS: &[&str] = &[
 /// doeff-hy forms that are keywords wherever they appear (definitions and binding syntax).
 const DOEFF_KEYWORDS: &[&str] = &[
     "defk", "deff", "defp", "defpp", "fnk", "do!", "<-", "<->", "for/do", "deftest", "defpipeline",
-    "defmcp-tool", "set!", "defhandler", "resume", "with-handler", "defrecord", "defenum",
+    "defmcp-tool", "set!", "lazy-val", "lazy-var", "defhandler", "resume", "with-handler", "defrecord", "defenum",
     "defworkflow", "defphase", "defadr", "defsemgrep", "law",
 ];
 
@@ -965,7 +965,7 @@ impl<'a> HyAnalyzer<'a> {
                     self.visit_handler_clauses(clauses);
                 }
             }
-            "setv" | "setx" | "set!" | "val" | "var" => self.visit_pairs(rest),
+            "setv" | "setx" | "set!" | "val" | "var" | "lazy-val" | "lazy-var" => self.visit_pairs(rest),
             "session" | "lazy" => {
                 // (session var name init) / (lazy val name expr)
                 let mut forms = rest;
