@@ -74,6 +74,16 @@ Works seamlessly with `.ipynb` files:
 - Handles IPython magic commands (`%matplotlib`, `%%time`)
 - Works with shell commands (`!pip install`)
 
+### λ Hy Support (including doeff-hy)
+Files ending in `.hy`, `.hyk`, and `.hyp` get the same per-symbol coloring:
+- Definitions (`defn`, `defclass`, `defmacro`, `fn`), parameters with scope, `setv`/`let`/`for`/`lfor`/`with`/`except`/`match` bindings
+- `obj.attr` / `(.method obj)` / `(obj.method)` as attributes and method calls, `:kw` arguments, `#^` type annotations, `import`/`require`
+- Names are mangled like Hy does (`my-value` and `my_value` share a color), so Hy and Python files agree
+- doeff-hy macros: `defk`, `deff`, `defp`, `defhandler` (effect clauses bind their fields), `deftest`, `defrecord`, `defenum`, `defadr`, `defsemgrep`, `<-`, `val` / `var` / `session` / `lazy`, `{:pre … :post …}` contracts
+- Word-like doeff-hy macros (`check`, `loop`, `pipeline`, …) count as keywords only when the file `require`s them
+- Tolerates unbalanced brackets while you type
+- Ships a basic Hy grammar so comments, strings, and keywords follow your theme
+
 ### ⚡ Fast Rust-based Parser
 - Native Rust binary using `rustpython-parser`
 - Sub-millisecond parsing for most files
