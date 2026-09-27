@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getRustBinaryPath, analyzeSource, HighlighterOutput } from './highlighter';
+import { getRustBinaryPath, analyzeSource, sourceLanguageOf, HighlighterOutput } from './highlighter';
 import { createDecorations, clearDecorationCache, clearExcludedHueRangesCache, clearBuiltinsCache, setDebugOutputChannel, getExcludedHueRangesDebug, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
@@ -31,7 +31,8 @@ async function highlightDocument(
     return;
   }
 
-  if (document.languageId !== 'python') {
+  const language = sourceLanguageOf(document);
+  if (language === undefined) {
     return;
   }
 
@@ -49,7 +50,7 @@ async function highlightDocument(
     if (!source.trim()) {
       return; // Empty document
     }
-    const result = await analyzeSource(source, binaryPath);
+    const result = await analyzeSource(source, binaryPath, language);
     
     if (!result) {
       outputChannel.appendLine(`Analysis failed for ${isNotebookCell ? 'notebook cell' : filePath}`);
@@ -132,7 +133,7 @@ async function highlightEditorIfNeeded(editor: vscode.TextEditor): Promise<void>
   }
 
   const document = editor.document;
-  if (document.languageId !== 'python') {
+  if (sourceLanguageOf(document) === undefined) {
     return;
   }
 
@@ -208,7 +209,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Register event handlers
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-      if (editor && editor.document.languageId === 'python') {
+      if (editor && sourceLanguageOf(editor.document) !== undefined) {
         scheduleHighlight(editor.document);
       }
     })
@@ -218,7 +219,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.window.onDidChangeVisibleTextEditors((editors) => {
       for (const editor of editors) {
-        if (editor.document.languageId === 'python') {
+        if (sourceLanguageOf(editor.document) !== undefined) {
           // Apply decorations to all visible Python editors
           highlightEditorIfNeeded(editor);
         }
@@ -228,7 +229,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((event) => {
-      if (event.document.languageId === 'python') {
+      if (sourceLanguageOf(event.document) !== undefined) {
         scheduleHighlight(event.document);
       }
     })
@@ -239,7 +240,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeNotebookDocument((event) => {
       // Re-highlight all Python cells in the notebook when cells change
       for (const cell of event.notebook.getCells()) {
-        if (cell.document.languageId === 'python') {
+        if (sourceLanguageOf(cell.document) !== undefined) {
           const editor = vscode.window.visibleTextEditors.find(
             e => e.document.uri.toString() === cell.document.uri.toString()
           );
@@ -253,7 +254,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
-      if (document.languageId === 'python') {
+      if (sourceLanguageOf(document) !== undefined) {
         // Immediate highlight on save
         const editor = vscode.window.visibleTextEditors.find(
           e => e.document.uri.toString() === document.uri.toString()
@@ -285,7 +286,7 @@ export function activate(context: vscode.ExtensionContext) {
         
         // First, clear all decorations from editors BEFORE disposing decoration types
         for (const editor of vscode.window.visibleTextEditors) {
-          if (editor.document.languageId === 'python') {
+          if (sourceLanguageOf(editor.document) !== undefined) {
             const documentKey = editor.document.uri.toString();
             const prevDecorations = pendingDecorations.get(documentKey);
             if (prevDecorations) {
@@ -305,7 +306,7 @@ export function activate(context: vscode.ExtensionContext) {
         
         // Re-highlight all visible Python editors
         for (const editor of vscode.window.visibleTextEditors) {
-          if (editor.document.languageId === 'python') {
+          if (sourceLanguageOf(editor.document) !== undefined) {
             if (isEnabled()) {
               outputChannel.appendLine(`Re-highlighting: ${editor.document.uri.fsPath}`);
               highlightDocument(editor.document, editor);
@@ -322,7 +323,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.commands.registerCommand('pythonSemanticHighlighter.refresh', () => {
       const editor = vscode.window.activeTextEditor;
-      if (editor && editor.document.languageId === 'python') {
+      if (editor && sourceLanguageOf(editor.document) !== undefined) {
         highlightDocument(editor.document, editor);
       }
     })
@@ -382,13 +383,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Highlight currently active Python editor
   const activeEditor = vscode.window.activeTextEditor;
-  if (activeEditor && activeEditor.document.languageId === 'python') {
+  if (activeEditor && sourceLanguageOf(activeEditor.document) !== undefined) {
     scheduleHighlight(activeEditor.document);
   }
 
   // Highlight all visible Python editors (including notebook cells)
   for (const editor of vscode.window.visibleTextEditors) {
-    if (editor.document.languageId === 'python') {
+    if (sourceLanguageOf(editor.document) !== undefined) {
       scheduleHighlight(editor.document);
     }
   }
@@ -396,7 +397,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Highlight all open notebook Python cells
   for (const notebook of vscode.workspace.notebookDocuments) {
     for (const cell of notebook.getCells()) {
-      if (cell.document.languageId === 'python') {
+      if (sourceLanguageOf(cell.document) !== undefined) {
         const editor = vscode.window.visibleTextEditors.find(
           e => e.document.uri.toString() === cell.document.uri.toString()
         );

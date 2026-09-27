@@ -18,6 +18,21 @@ export interface HighlighterOutput {
   symbols: SymbolEntry[];
 }
 
+/** Languages the Rust analyzer understands (passed as `--lang`). */
+export type SourceLanguage = 'python' | 'hy';
+
+/** The analyzer language for a document, or undefined when the document is not highlighted. */
+export function sourceLanguageOf(document: vscode.TextDocument): SourceLanguage | undefined {
+  switch (document.languageId) {
+    case 'python':
+      return 'python';
+    case 'hy':
+      return 'hy';
+    default:
+      return undefined;
+  }
+}
+
 function getPlatformBinaryName(): { dir: string; name: string } {
   const platform = process.platform;
   const arch = process.arch;
@@ -120,10 +135,11 @@ export async function analyzeFile(
 
 export async function analyzeSource(
   source: string,
-  binaryPath: string
+  binaryPath: string,
+  language: SourceLanguage
 ): Promise<HighlighterOutput | null> {
   return new Promise((resolve) => {
-    const child = spawn(binaryPath, ['/dev/stdin']);
+    const child = spawn(binaryPath, ['--lang', language, '/dev/stdin']);
     let stdout = '';
     let stderr = '';
 

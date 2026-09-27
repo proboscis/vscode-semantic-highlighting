@@ -1,8 +1,8 @@
 {
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
-  "description": "Semantic highlighting for Python inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.6.4",
+  "description": "Semantic highlighting for Python and Hy (including doeff-hy macros) inspired by IntelliJ - each symbol gets a unique color",
+  "version": "1.7.0",
   "publisher": "Proboscis",
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
   ],
   "keywords": [
     "python",
+    "hy",
     "semantic",
     "highlighting",
     "syntax",
@@ -33,6 +34,7 @@
   ],
   "activationEvents": [
     "onLanguage:python",
+    "onLanguage:hy",
     "onNotebook:jupyter-notebook"
   ],
   "main": "./out/extension.js",
@@ -102,6 +104,28 @@
             }
           }
         ]
+      }
+    ],
+    "languages": [
+      {
+        "id": "hy",
+        "aliases": [
+          "Hy",
+          "hy"
+        ],
+        "extensions": [
+          ".hy",
+          ".hyk",
+          ".hyp"
+        ],
+        "configuration": "./language-configuration-hy.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "hy",
+        "scopeName": "source.hy",
+        "path": "./syntaxes/hy.tmLanguage.json"
       }
     ],
     "configuration": {

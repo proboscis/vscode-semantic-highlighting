@@ -10,6 +10,8 @@ use rustpython_parser::text_size::TextRange;
 use rustpython_parser::Parse;
 use serde::Serialize;
 
+mod hy;
+
 #[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]
 enum SymbolKind {
@@ -1235,15 +1237,53 @@ fn preprocess_source(source: &str) -> String {
     result
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Language {
+    Python,
+    Hy,
+}
+
+impl Language {
+    fn from_name(name: &str) -> Result<Self> {
+        match name {
+            "python" => Ok(Language::Python),
+            "hy" => Ok(Language::Hy),
+            other => bail!("unknown language: {}", other),
+        }
+    }
+
+    fn from_path(path: &PathBuf) -> Self {
+        match path.extension().and_then(|e| e.to_str()) {
+            Some("hy" | "hyk" | "hyp") => Language::Hy,
+            _ => Language::Python,
+        }
+    }
+}
+
 fn main() -> Result<()> {
+    let mut language: Option<Language> = None;
+    let mut path: Option<PathBuf> = None;
     let mut args = env::args().skip(1);
-    let path = match args.next() {
-        Some(p) => PathBuf::from(p),
-        None => bail!("expected python file path"),
+    while let Some(arg) = args.next() {
+        if arg == "--lang" {
+            let name = args.next().context("--lang needs a value (python or hy)")?;
+            language = Some(Language::from_name(&name)?);
+        } else {
+            path = Some(PathBuf::from(arg));
+        }
+    }
+    let Some(path) = path else {
+        bail!("expected source file path");
     };
+    let language = language.unwrap_or_else(|| Language::from_path(&path));
 
     let source = fs::read_to_string(&path)
         .with_context(|| format!("failed to read {}", path.display()))?;
+
+    if language == Language::Hy {
+        serde_json::to_writer(std::io::stdout(), &hy::analyze(&source))?;
+        return Ok(());
+    }
 
     // Preprocess to handle Jupyter magic commands
     let processed_source = preprocess_source(&source);
