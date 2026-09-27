@@ -118,7 +118,11 @@
           ".hyk",
           ".hyp"
         ],
-        "configuration": "./language-configuration-hy.json"
+        "configuration": "./language-configuration-hy.json",
+        "icon": {
+          "light": "./icons/hy-light.svg",
+          "dark": "./icons/hy-dark.svg"
+        }
       }
     ],
     "grammars": [
