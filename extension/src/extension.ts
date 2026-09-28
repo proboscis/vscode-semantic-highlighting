@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { getRustBinaryPath, analyzeSource, sourceLanguageOf, HighlighterOutput } from './highlighter';
-import { createDecorations, clearDecorationCache, clearExcludedHueRangesCache, clearBuiltinsCache, setDebugOutputChannel, getExcludedHueRangesDebug, DecorationEntry } from './colors';
+import { getRustBinaryPath, analyzeSource, sourceLanguageOf, HighlighterOutput, SourceLanguage } from './highlighter';
+import { colorSymbols, createDecorations, clearDecorationCache, clearExcludedHueRangesCache, clearBuiltinsCache, setDebugOutputChannel, getExcludedHueRangesDebug, DecorationEntry } from './colors';
 import { SettingsPanel } from './settingsPanel';
 
 let outputChannel: vscode.OutputChannel;
@@ -167,7 +167,56 @@ function clearDocumentDecorations(documentUri: string): void {
   pendingDecorations.delete(documentUri);
 }
 
-export function activate(context: vscode.ExtensionContext) {
+/** One colored symbol occurrence returned by the public API (line / column in UTF-16 code units, like vscode.Position). */
+export interface ColoredSpan {
+  line: number;
+  column: number;
+  length: number;
+  color: string;
+}
+
+/**
+ * The public API returned from activate — lets another extension (doeff-runner's reading view) show source with exactly the
+ * colors this extension paints in the editor: same analyzer, same settings, same whole-file round-robin order.
+ */
+export interface SemanticHighlighterApi {
+  readonly apiVersion: 1;
+  /** Colors of `source` as a whole file, or null when highlighting is disabled, the language is not handled, or analysis fails. */
+  colorize(source: string, languageId: string): Promise<ColoredSpan[] | null>;
+}
+
+/** The analyzer language for a VS Code language id (the same mapping the editor uses through sourceLanguageOf). */
+function analyzerLanguage(languageId: string): SourceLanguage | undefined {
+  switch (languageId) {
+    case 'python':
+      return 'python';
+    case 'hy':
+      return 'hy';
+    default:
+      return undefined;
+  }
+}
+
+/** Colorize a whole source for the public API (what applyDecorations would paint for the same text). */
+async function colorize(source: string, languageId: string): Promise<ColoredSpan[] | null> {
+  const language = analyzerLanguage(languageId);
+  if (!isEnabled() || language === undefined || !source.trim()) {
+    return null;
+  }
+  const result = await analyzeSource(source, binaryPath, language);
+  if (!result) {
+    return null;
+  }
+  const spans: ColoredSpan[] = [];
+  for (const [color, occurrences] of colorSymbols(result.symbols)) {
+    for (const occ of occurrences) {
+      spans.push({ line: occ.line, column: occ.column, length: occ.length, color });
+    }
+  }
+  return spans;
+}
+
+export function activate(context: vscode.ExtensionContext): SemanticHighlighterApi {
   outputChannel = vscode.window.createOutputChannel('Python Semantic Highlighter');
   outputChannel.appendLine('Python Semantic Highlighter activating...');
   
@@ -410,6 +459,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine('Python Semantic Highlighter activated');
+  return { apiVersion: 1, colorize };
 }
 
 export function deactivate() {
