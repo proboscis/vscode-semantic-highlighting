@@ -2,7 +2,7 @@
   "name": "python-semantic-highlighter",
   "displayName": "Python Semantic Highlighter",
   "description": "Semantic highlighting for Python and Hy (including doeff-hy macros) inspired by IntelliJ - each symbol gets a unique color",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "publisher": "Proboscis",
   "repository": {
     "type": "git",

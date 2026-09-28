@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { SymbolEntry } from './highlighter';
+import { Occurrence, SymbolEntry } from './highlighter';
 
 // Semantic categories that get hash-based coloring
 type SemanticCategory = 
@@ -642,39 +642,48 @@ export interface DecorationEntry {
 }
 
 /**
+ * The color of every symbol occurrence of one analyzed file — the single place that decides the colors, shared by the
+ * editor decorations (createDecorations) and the public API (colorize), so an embedding view shows the editor's colors.
+ * Symbols whose color is null (disabled category, keyword without a fixed color) are left out: the theme colors them.
+ */
+export function colorSymbols(symbols: SymbolEntry[]): Map<string, Occurrence[]> {
+  // Reset variable indices for fresh round-robin distribution (colors depend on the order of the whole file's symbols)
+  resetVariableIndices();
+
+  const occurrencesByColor = new Map<string, Occurrence[]>();
+  for (const symbol of symbols) {
+    const color = getColorForSymbol(symbol.name, symbol.kind);
+
+    // Skip if color is null (disabled or inherit mode)
+    if (!color) {
+      continue;
+    }
+
+    // Group by color
+    const existing = occurrencesByColor.get(color);
+    if (existing) {
+      existing.push(...symbol.occurrences);
+    } else {
+      occurrencesByColor.set(color, [...symbol.occurrences]);
+    }
+  }
+  return occurrencesByColor;
+}
+
+/**
  * Create decoration types and ranges for all symbols
  */
 export function createDecorations(
   symbols: SymbolEntry[],
   decorationCache: Map<string, vscode.TextEditorDecorationType>
 ): DecorationEntry[] {
-  // Reset variable indices for fresh round-robin distribution
-  resetVariableIndices();
-  
   const result: DecorationEntry[] = [];
   const rangesByColor = new Map<string, vscode.Range[]>();
-
-  for (const symbol of symbols) {
-    const color = getColorForSymbol(symbol.name, symbol.kind);
-    
-    // Skip if color is null (disabled or inherit mode)
-    if (!color) {
-      continue;
-    }
-    
-    const ranges = symbol.occurrences.map(occ => {
-      const startPos = new vscode.Position(occ.line, occ.column);
-      const endPos = new vscode.Position(occ.line, occ.column + occ.length);
-      return new vscode.Range(startPos, endPos);
-    });
-
-    // Group by color
-    const existing = rangesByColor.get(color);
-    if (existing) {
-      existing.push(...ranges);
-    } else {
-      rangesByColor.set(color, ranges);
-    }
+  for (const [color, occurrences] of colorSymbols(symbols)) {
+    rangesByColor.set(
+      color,
+      occurrences.map(occ => new vscode.Range(new vscode.Position(occ.line, occ.column), new vscode.Position(occ.line, occ.column + occ.length)))
+    );
   }
 
   // Create decoration types for each unique color
