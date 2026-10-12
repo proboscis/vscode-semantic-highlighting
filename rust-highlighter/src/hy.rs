@@ -353,8 +353,11 @@ const HY_KEYWORDS: &[&str] = &[
 const DOEFF_KEYWORDS: &[&str] = &[
     "defk", "deff", "defp", "defpp", "fnk", "do!", "<-", "<->", "for/do", "deftest", "defpipeline",
     "defmcp-tool", "set!", "lazy-val", "lazy-var", "defhandler", "defeffect", "resume", "with-handler", "defrecord", "defenum",
-    "defworkflow", "defphase", "defadr", "defsemgrep", "law",
+    "defworkflow", "defphase", "defadr", "defsemgrep", "law", "defwire", "defsystem", "defdomain",
 ];
+
+/// agora-controllers' own declaration forms (architecture, services, patrols, Jev rules): keywords wherever they appear.
+const AGORA_KEYWORDS: &[&str] = &["defjevrule", "defservice", "defarchitecture", "defpatrol", "defpatrol-check"];
 
 /// doeff-hy macros whose names are ordinary words: keywords only when the file requires them.
 const DOEFF_REQUIRED_KEYWORDS: &[&str] = &[
@@ -905,13 +908,13 @@ impl<'a> HyAnalyzer<'a> {
     fn visit_special(&mut self, head: &str, items: &[Form]) {
         let rest = &items[1..];
         match head {
-            "defn" | "defn/a" | "defmacro" | "defk" | "deff" => self.visit_function_def(rest),
+            "defn" | "defn/a" | "defmacro" | "defk" | "deff" | "defsystem" => self.visit_function_def(rest),
             "fn" | "fn/a" | "fnk" => self.visit_lambda(rest),
             "defclass" => self.visit_class_def(rest),
-            "defrecord" => {
+            "defrecord" | "defwire" => {
                 if let Some((name, body)) = rest.split_first() {
                     self.visit_definition_name(name, SymbolKind::Class);
-                    self.visit_class_body(body);
+                    self.visit_class_body(body, true);
                 }
             }
             "defenum" => {
@@ -928,7 +931,8 @@ impl<'a> HyAnalyzer<'a> {
                     }
                 }
             }
-            "deftype" | "defadr" => {
+            "deftype" | "defadr" | "defdomain" | "defservice" | "defarchitecture" | "defjevrule" | "defpatrol"
+            | "defpatrol-check" => {
                 if let Some((name, body)) = rest.split_first() {
                     self.visit_definition_name(name, SymbolKind::Class);
                     self.visit_args(body);
@@ -1174,18 +1178,47 @@ impl<'a> HyAnalyzer<'a> {
             }
             _ => rest,
         };
-        self.visit_class_body(body);
+        self.visit_class_body(body, false);
     }
 
-    /// Class / record body: `(#^ Type field)` declares a field (colored as an attribute).
-    fn visit_class_body(&mut self, forms: &[Form]) {
+    /// Class / record body: `(#^ Type field)` declares a field (colored as an attribute). A record (`defrecord`,
+    /// `defwire`) also reads the other spellings of doeff-hy's `field-targets` — a bare `f`, a bare `#^ T f`, and
+    /// `(setv #^ T1 a v1 #^ T2 b v2 …)` — and a leading `{:tags … :names {field "wire-name"}}` header.
+    fn visit_class_body(&mut self, forms: &[Form], record: bool) {
         let mut index = 0;
         if let Some(Form::Str { kind: StrKind::Plain, span, .. }) = forms.first() {
             self.record_lines("__docstring__", SymbolKind::Docstring, span.start, span.end);
             index = 1;
         }
         for form in &forms[index..] {
+            match form {
+                Form::Seq { delim: Delim::Brace, items } if record => {
+                    self.visit_record_header(items);
+                    continue;
+                }
+                Form::Symbol(span) if record && !is_operator(self.text(*span)) => {
+                    self.visit_field(form);
+                    continue;
+                }
+                Form::Annotated { .. } if record => {
+                    self.visit_field(form);
+                    continue;
+                }
+                _ => {}
+            }
             match form.paren_items() {
+                Some([Form::Symbol(head), targets @ ..]) if record && self.text(*head) == "setv" => {
+                    self.record_keyword(*head);
+                    for pair in targets.chunks(2) {
+                        match &pair[0] {
+                            annotated @ Form::Annotated { .. } => self.visit_field(annotated),
+                            other => self.visit_target(other),
+                        }
+                        if let Some(value) = pair.get(1) {
+                            self.visit_expr(value);
+                        }
+                    }
+                }
                 Some([Form::Annotated { annotation, target }, defaults @ ..]) => {
                     if let Some(annotation) = annotation {
                         self.visit_type(annotation);
@@ -1246,25 +1279,51 @@ impl<'a> HyAnalyzer<'a> {
             return;
         };
         for field in fields {
-            match field {
-                Form::Symbol(span) => {
-                    let name = mangle(self.text(*span));
-                    self.record(&name, SymbolKind::Attribute, span.start, span.end);
+            self.visit_field(field);
+        }
+    }
+
+    /// One declared field: a plain name or `#^ T name` becomes an attribute (the type is visited as a type).
+    fn visit_field(&mut self, field: &Form) {
+        match field {
+            Form::Symbol(span) => {
+                let name = mangle(self.text(*span));
+                self.record(&name, SymbolKind::Attribute, span.start, span.end);
+            }
+            Form::Annotated { annotation, target } => {
+                if let Some(annotation) = annotation {
+                    self.visit_type(annotation);
                 }
-                Form::Annotated { annotation, target } => {
-                    if let Some(annotation) = annotation {
-                        self.visit_type(annotation);
+                match target.as_deref() {
+                    Some(Form::Symbol(span)) => {
+                        let name = mangle(self.text(*span));
+                        self.record(&name, SymbolKind::Attribute, span.start, span.end);
                     }
-                    match target.as_deref() {
-                        Some(Form::Symbol(span)) => {
-                            let name = mangle(self.text(*span));
-                            self.record(&name, SymbolKind::Attribute, span.start, span.end);
+                    Some(other) => self.visit_expr(other),
+                    None => {}
+                }
+            }
+            other => self.visit_expr(other),
+        }
+    }
+
+    /// The `{:tags … :names {field "wire-name" …} :unknown :ignore}` header of a record: the `:names` keys are the
+    /// declared fields (attributes, so they share the color of the field's own declaration); the rest reads as data.
+    fn visit_record_header(&mut self, items: &[Form]) {
+        for pair in items.chunks(2) {
+            match pair {
+                [key @ Form::Keyword(span), Form::Seq { delim: Delim::Brace, items: names }]
+                    if self.text(*span) == ":names" =>
+                {
+                    self.visit_expr(key);
+                    for entry in names.chunks(2) {
+                        self.visit_field(&entry[0]);
+                        if let Some(wire_name) = entry.get(1) {
+                            self.visit_expr(wire_name);
                         }
-                        Some(other) => self.visit_expr(other),
-                        None => {}
                     }
                 }
-                other => self.visit_expr(other),
+                _ => self.visit_all(pair),
             }
         }
     }
@@ -1452,7 +1511,8 @@ pub(crate) fn analyze(source: &str) -> HighlighterOutput {
     let mut reader = Reader::new(source, 0, source.len());
     let forms = reader.read_all();
 
-    let mut keywords: HashSet<String> = HY_KEYWORDS.iter().chain(DOEFF_KEYWORDS).map(|s| s.to_string()).collect();
+    let mut keywords: HashSet<String> =
+        HY_KEYWORDS.iter().chain(DOEFF_KEYWORDS).chain(AGORA_KEYWORDS).map(|s| s.to_string()).collect();
     let mut required = HashSet::new();
     collect_required(&forms, source, &mut required);
     for name in DOEFF_REQUIRED_KEYWORDS {
@@ -1584,6 +1644,69 @@ mod tests {
         assert!(has(&out, "int", SymbolKind::TypeAnnotation));
         assert!(has(&out, "str", SymbolKind::TypeAnnotation));
         assert!(has(&out, "__docstring__", SymbolKind::Docstring));
+    }
+
+    #[test]
+    fn defwire_name_fields_names_header_and_docstring() {
+        let source = "(defwire SlotAnswer\n  \"The answer line.\"\n  {:tags {:context \"agent-env\"} :names {active-read \"active_read\" size \"bytes\"} :unknown :ignore}\n  \
+                      (#^ int lines)\n  (setv #^ (| float None) seconds None #^ str note \"\")\n  #^ SlotRead active-read\n  size)\n";
+        let out = analyze(source);
+        assert!(has(&out, "defwire", SymbolKind::Keyword));
+        assert!(has(&out, "SlotAnswer", SymbolKind::Class));
+        assert!(has(&out, "setv", SymbolKind::Keyword));
+        assert!(has(&out, "__docstring__", SymbolKind::Docstring));
+        for field in ["lines", "seconds", "note", "active_read", "size"] {
+            assert_eq!(kinds_of(&out, field), vec![SymbolKind::Attribute], "{field} is a declared field");
+        }
+        // The `:names` key and the field's own declaration are the same name, so they share one entry.
+        let size = out.symbols.iter().find(|s| s.name == "size").unwrap();
+        assert_eq!(size.occurrences.len(), 2);
+        assert!(has(&out, "names", SymbolKind::KwargName));
+        assert!(has(&out, "SlotRead", SymbolKind::TypeAnnotation));
+    }
+
+    #[test]
+    fn defrecord_reads_every_field_spelling() {
+        let out = analyze("(defrecord Run\n  \"Doc\"\n  {:tags {:context \"x\"}}\n  (#^ int cycles 0)\n  #^ str label\n  (setv #^ int retries 3))\n");
+        assert!(has(&out, "Run", SymbolKind::Class));
+        for field in ["cycles", "label", "retries"] {
+            assert_eq!(kinds_of(&out, field), vec![SymbolKind::Attribute], "{field} is a declared field");
+        }
+    }
+
+    #[test]
+    fn defsystem_name_params_and_docstring() {
+        let source = "(defsystem agora-land [foundation]\n  \"Landing notices.\"\n  (land-notice (land-notice foundation) :needs #{\"pg\"} :replicas 1))\n";
+        let out = analyze(source);
+        assert!(has(&out, "defsystem", SymbolKind::Keyword));
+        assert!(has(&out, "agora_land", SymbolKind::Function));
+        assert!(has(&out, "__docstring__", SymbolKind::Docstring));
+        let foundation = out.symbols.iter().find(|s| s.name == "foundation").unwrap();
+        assert_eq!(foundation.kind, SymbolKind::Parameter);
+        assert_eq!(foundation.occurrences.len(), 2, "the parameter and its use share one color");
+        assert!(has(&out, "replicas", SymbolKind::KwargName));
+    }
+
+    #[test]
+    fn declaration_forms_define_their_name() {
+        let source = "(defdomain doeff-reader :title \"Reader\" :effects [Ask])\n\
+                      (defservice webapp \"Serves files\" {:depends-on [screen] :layers [core]})\n\
+                      (defarchitecture agora-controllers :root \"controllers\" :layers [(layer core :summary \"x\")])\n\
+                      (defjevrule acp-app-is-not-called-acp :summary \"s\" :fires-on \"Stop\")\n\
+                      (defpatrol card-scheduler :kind \"timer\" :job \"scheduler\")\n\
+                      (defpatrol-check card-scheduler-lag :patrol \"card-scheduler\")\n";
+        let out = analyze(source);
+        for head in ["defdomain", "defservice", "defarchitecture", "defjevrule", "defpatrol", "defpatrol-check"] {
+            assert!(has(&out, head, SymbolKind::Keyword), "{head} is a form head");
+            assert!(!has(&out, head, SymbolKind::FunctionCall), "{head} is not a call");
+        }
+        for name in [
+            "doeff_reader", "webapp", "agora_controllers", "acp_app_is_not_called_acp", "card_scheduler", "card_scheduler_lag",
+        ] {
+            assert!(has(&out, name, SymbolKind::Class), "{name} is a defined name");
+        }
+        assert!(has(&out, "title", SymbolKind::KwargName));
+        assert!(has(&out, "depends_on", SymbolKind::KwargName));
     }
 
     #[test]
